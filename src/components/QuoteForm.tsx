@@ -1,14 +1,29 @@
 import React, { useState } from 'react';
-import { MessageSquare, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MessageSquare, Send, CheckCircle2, AlertCircle, Wrench, Calendar, FileText } from 'lucide-react';
 import { services } from '../data/services';
 import { buildWhatsAppUrl } from '../data/business';
 import { trackEvent } from '../utils/analytics';
+
+const DAMAGED_PARTS_OPTIONS = [
+  'Para-choque dianteiro',
+  'Para-choque traseiro',
+  'Capô',
+  'Paralama',
+  'Porta',
+  'Lateral / Teto',
+  'Tampa traseira / Porta-malas',
+  'Outra peça',
+];
 
 interface FormState {
   name: string;
   phone: string;
   service: string;
   vehicle: string;
+  vehicleYear: string;
+  damagedParts: string[];
+  otherPartText: string;
+  damageDescription: string;
   isInsurance: string;
   consent: boolean;
 }
@@ -32,6 +47,10 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
     phone: '',
     service: 'Funilaria',
     vehicle: '',
+    vehicleYear: '',
+    damagedParts: [],
+    otherPartText: '',
+    damageDescription: '',
     isInsurance: 'Não',
     consent: false,
   });
@@ -56,6 +75,20 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
     }
   };
 
+  const handlePartToggle = (part: string) => {
+    setFormData((prev) => {
+      const exists = prev.damagedParts.includes(part);
+      const nextParts = exists
+        ? prev.damagedParts.filter((p) => p !== part)
+        : [...prev.damagedParts, part];
+      return {
+        ...prev,
+        damagedParts: nextParts,
+        otherPartText: !nextParts.includes('Outra peça') ? '' : prev.otherPartText,
+      };
+    });
+  };
+
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
 
@@ -73,7 +106,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
     }
 
     if (!formData.vehicle.trim() || formData.vehicle.trim().length < 2) {
-      newErrors.vehicle = 'Informe o modelo e ano do seu carro.';
+      newErrors.vehicle = 'Informe o modelo do seu carro.';
     }
 
     if (!formData.isInsurance) {
@@ -99,14 +132,46 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
     trackEvent('form_submit', {
       service: formData.service,
       is_insurance: formData.isInsurance,
+      has_year: Boolean(formData.vehicleYear.trim()),
+      parts_count: formData.damagedParts.length,
+      has_notes: Boolean(formData.damageDescription.trim()),
     });
+
+    // Monta o resumo das peças danificadas
+    const selectedPartsList = formData.damagedParts.map((p) => {
+      if (p === 'Outra peça' && formData.otherPartText.trim()) {
+        return `Outra (${formData.otherPartText.trim()})`;
+      }
+      return p;
+    });
+
+    const partsString = selectedPartsList.length > 0 ? selectedPartsList.join(', ') : '';
+
+    // Monta a mensagem estruturada e segura para o WhatsApp
+    const messageLines = [
+      `Olá, Garagem Mailasque! Vim pelo site.`,
+      `Meu nome é ${formData.name.trim()}.`,
+      `Quero um orçamento de ${formData.service}.`,
+      `Meu carro: ${formData.vehicle.trim()}${formData.vehicleYear.trim() ? ` (Ano: ${formData.vehicleYear.trim()})` : ''}.`,
+      `Seguro: ${formData.isInsurance}.`,
+    ];
+
+    if (partsString) {
+      messageLines.push(`Peças a reparar: ${partsString}.`);
+    }
+
+    if (formData.damageDescription.trim()) {
+      messageLines.push(`Detalhes do dano: ${formData.damageDescription.trim()}.`);
+    }
+
+    const customText = messageLines.join(' ');
 
     const targetUrl = buildWhatsAppUrl({
       originSection: 'site-form',
       service: formData.service,
-      vehicle: formData.vehicle.trim(),
+      vehicle: `${formData.vehicle.trim()}${formData.vehicleYear.trim() ? ` ${formData.vehicleYear.trim()}` : ''}`,
       isInsurance: formData.isInsurance,
-      customText: `Olá, Garagem Mailasque! Vim pelo site. Meu nome é ${formData.name.trim()}. Quero um orçamento de ${formData.service}. Meu carro: ${formData.vehicle.trim()}. Seguro: ${formData.isInsurance}.`,
+      customText,
     });
 
     setIsSuccess(true);
@@ -154,6 +219,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate className="space-y-6">
+              {/* Linha 1: Nome e WhatsApp */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Nome */}
                 <div>
@@ -211,9 +277,10 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Linha 2: Serviço e Veículo */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-6">
                 {/* Serviço Desejado */}
-                <div>
+                <div className="sm:col-span-5">
                   <label htmlFor="form-service" className="block text-xs font-bold text-[#C9CDD2] uppercase tracking-wider mb-2">
                     Serviço Desejado *
                   </label>
@@ -235,10 +302,10 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
                   </select>
                 </div>
 
-                {/* Veículo (Modelo / Ano) */}
-                <div>
+                {/* Veículo (Modelo) */}
+                <div className="sm:col-span-4">
                   <label htmlFor="form-vehicle" className="block text-xs font-bold text-[#C9CDD2] uppercase tracking-wider mb-2">
-                    Modelo e Ano do Veículo *
+                    Modelo do Veículo *
                   </label>
                   <input
                     id="form-vehicle"
@@ -249,7 +316,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
                       setFormData({ ...formData, vehicle: e.target.value });
                       if (errors.vehicle) setErrors({ ...errors, vehicle: undefined });
                     }}
-                    placeholder="Ex.: Fiat Toro 2021"
+                    placeholder="Ex.: Fiat Toro, HB20, Corolla"
                     aria-describedby={errors.vehicle ? 'error-vehicle' : undefined}
                     aria-invalid={Boolean(errors.vehicle)}
                     className={`w-full px-4 py-3.5 rounded-xl bg-[#121212] border text-[#F5F5F5] text-sm focus:outline-none transition-colors ${
@@ -263,6 +330,96 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
                     </p>
                   )}
                 </div>
+
+                {/* Ano do Veículo (Opcional) */}
+                <div className="sm:col-span-3">
+                  <label htmlFor="form-vehicle-year" className="block text-xs font-bold text-[#C9CDD2] uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>Ano</span>
+                    <span className="text-[10px] text-[#737373] font-normal lowercase">(opcional)</span>
+                  </label>
+                  <input
+                    id="form-vehicle-year"
+                    type="text"
+                    maxLength={9}
+                    value={formData.vehicleYear}
+                    onChange={(e) => setFormData({ ...formData, vehicleYear: e.target.value })}
+                    placeholder="Ex.: 2021"
+                    className="w-full px-4 py-3.5 rounded-xl bg-[#121212] border border-[#2C2C2C] text-[#F5F5F5] text-sm focus:border-[#F97316] focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Linha 3: Peças / Áreas Danificadas (Multi-seleção opcional) */}
+              <div>
+                <label className="block text-xs font-bold text-[#C9CDD2] uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-[#F97316]" aria-hidden="true" />
+                    <span>Peças ou Regiões a Reparar</span>
+                  </span>
+                  <span className="text-[10px] text-[#737373] font-normal lowercase">(seleção opcional)</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {DAMAGED_PARTS_OPTIONS.map((part) => {
+                    const isSelected = formData.damagedParts.includes(part);
+                    return (
+                      <button
+                        key={part}
+                        type="button"
+                        onClick={() => handlePartToggle(part)}
+                        className={`px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all border flex items-center justify-between focus-visible:outline-2 focus-visible:outline-[#F97316] ${
+                          isSelected
+                            ? 'bg-[#F97316]/15 border-[#F97316] text-[#F97316]'
+                            : 'bg-[#121212] border-[#2C2C2C] text-[#A3A3A3] hover:border-[#3E3E3E] hover:text-[#F5F5F5]'
+                        }`}
+                      >
+                        <span className="truncate">{part}</span>
+                        <span
+                          className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ml-1.5 ${
+                            isSelected ? 'bg-[#F97316] border-[#F97316]' : 'border-[#444444]'
+                          }`}
+                        >
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#0A0A0A]" />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Campo condicional para detalhar 'Outra peça' */}
+                {formData.damagedParts.includes('Outra peça') && (
+                  <div className="mt-3">
+                    <label htmlFor="form-other-part" className="sr-only">
+                      Especifique a outra peça
+                    </label>
+                    <input
+                      id="form-other-part"
+                      type="text"
+                      value={formData.otherPartText}
+                      onChange={(e) => setFormData({ ...formData, otherPartText: e.target.value })}
+                      placeholder="Especifique qual peça ou área (ex.: retrovisor, caixa de ar, teto)..."
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#121212] border border-[#2C2C2C] text-[#F5F5F5] text-xs focus:border-[#F97316] focus:outline-none transition-colors"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Linha 4: Descrição / Observações adicionais do dano (Opcional) */}
+              <div>
+                <label htmlFor="form-damage-description" className="block text-xs font-bold text-[#C9CDD2] uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-[#F97316]" aria-hidden="true" />
+                    <span>Detalhes do Dano ou Observações</span>
+                  </span>
+                  <span className="text-[10px] text-[#737373] font-normal lowercase">(opcional)</span>
+                </label>
+                <textarea
+                  id="form-damage-description"
+                  rows={2}
+                  value={formData.damageDescription}
+                  onChange={(e) => setFormData({ ...formData, damageDescription: e.target.value })}
+                  placeholder="Ex.: Batida na quina direita, amassado leve sem riscar a tinta, ralado no para-choque..."
+                  className="w-full px-4 py-3 rounded-xl bg-[#121212] border border-[#2C2C2C] text-[#F5F5F5] text-sm focus:border-[#F97316] focus:outline-none transition-colors resize-none placeholder-neutral-500"
+                />
               </div>
 
               {/* É pelo seguro? */}

@@ -10,6 +10,7 @@ import { Hero } from './components/Hero';
 import { Services } from './components/Services';
 import { Insurers } from './components/Insurers';
 import { Workflow } from './components/Workflow';
+import { BeforeAfterSlider } from './components/BeforeAfterSlider';
 import { Gallery } from './components/Gallery';
 import { Testimonials } from './components/Testimonials';
 import { PaymentSimulator } from './components/PaymentSimulator';
@@ -18,11 +19,12 @@ import { QuoteForm } from './components/QuoteForm';
 import { Faq } from './components/Faq';
 import { Location } from './components/Location';
 import { Footer } from './components/Footer';
-import { PrivacyModal, LegalDocType } from './components/PrivacyModal';
+import type { LegalDocType } from './components/PrivacyModal';
 import { CookieConsent } from './components/CookieConsent';
 
-// Lazy loading do FloatingWhatsApp para priorizar o carregamento e renderização do LCP (conteúdo principal)
+// Lazy loading do FloatingWhatsApp e PrivacyModal para priorizar LCP
 const FloatingWhatsApp = lazy(() => import('./components/FloatingWhatsApp'));
+const PrivacyModal = lazy(() => import('./components/PrivacyModal'));
 
 export default function App() {
   const [legalModalOpen, setLegalModalOpen] = useState(false);
@@ -101,29 +103,32 @@ export default function App() {
         {/* 5. Diferenciais / Como Funciona */}
         <Workflow />
 
-        {/* 6. Galeria da Oficina (Fotos & Vídeos Reais com Lightbox) */}
+        {/* 6. Comparador Antes e Depois (Slider Interativo) */}
+        <BeforeAfterSlider />
+
+        {/* 7. Galeria da Oficina (Fotos & Vídeos Reais com Lightbox) */}
         <Gallery />
 
-        {/* 7. Avaliações (Nota 4,9 no Google / 79 avaliações) */}
+        {/* 8. Avaliações (Nota 4,9 no Google / 79 avaliações) */}
         <Testimonials />
 
-        {/* 8. Condições de Pagamento & Simulador Interativo */}
+        {/* 9. Condições de Pagamento & Simulador Interativo */}
         <PaymentSimulator />
 
-        {/* 9. Parceria APVS Brasil */}
+        {/* 10. Parceria APVS Brasil */}
         <PartnerApvs />
 
-        {/* 10. Formulário de Orçamento com Validação */}
+        {/* 11. Formulário de Orçamento com Validação */}
         <QuoteForm onOpenPrivacyModal={handleOpenPrivacy} />
 
-        {/* 11. FAQ (Perguntas Frequentes) */}
+        {/* 12. FAQ (Perguntas Frequentes) */}
         <Faq />
 
-        {/* 12. Localização, Acessibilidade e Mapa */}
+        {/* 13. Localização, Acessibilidade e Mapa */}
         <Location />
       </main>
 
-      {/* 13. Rodapé Completo */}
+      {/* 14. Rodapé Completo */}
       <Footer
         onOpenPrivacyModal={handleOpenPrivacy}
         onOpenTermsModal={handleOpenTerms}
@@ -131,22 +136,26 @@ export default function App() {
         onOpenCookieSettingsModal={handleOpenCookieSettings}
       />
 
-      {/* 14. Botão Flutuante do WhatsApp (Lazy Loading diferido para otimizar LCP) */}
+      {/* 15. Botão Flutuante do WhatsApp (Lazy Loading diferido para otimizar LCP) */}
       {canLoadWhatsApp && (
         <Suspense fallback={null}>
           <FloatingWhatsApp />
         </Suspense>
       )}
 
-      {/* 15. Modal de Documentos Legais e Configuração de Cookies */}
-      <PrivacyModal
-        type={legalDocType}
-        isOpen={legalModalOpen}
-        onClose={() => setLegalModalOpen(false)}
-        onTypeChange={(newType) => setLegalDocType(newType)}
-      />
+      {/* 16. Modal de Documentos Legais e Configuração de Cookies (Carregado apenas quando aberto) */}
+      {legalModalOpen && (
+        <Suspense fallback={null}>
+          <PrivacyModal
+            type={legalDocType}
+            isOpen={legalModalOpen}
+            onClose={() => setLegalModalOpen(false)}
+            onTypeChange={(newType) => setLegalDocType(newType)}
+          />
+        </Suspense>
+      )}
 
-      {/* 16. Banner de Consentimento LGPD (somente quando há IDs analíticos) */}
+      {/* 17. Banner de Consentimento LGPD (somente quando há IDs analíticos) */}
       <CookieConsent
         onOpenPrivacyModal={handleOpenPrivacy}
         onOpenCookiesPolicyModal={handleOpenCookies}

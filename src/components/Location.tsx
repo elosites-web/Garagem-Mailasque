@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   MapPin,
   Navigation,
@@ -15,7 +15,30 @@ import { trackEvent } from '../utils/analytics';
 
 export const Location: React.FC = () => {
   const [copied, setCopied] = useState(false);
+  const [shouldLoadMap, setShouldLoadMap] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const currentDayOfWeek = getCurrentDayOfWeekSaoPaulo();
+
+  useEffect(() => {
+    const el = mapContainerRef.current;
+    if (!el) return;
+
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) {
+            setShouldLoadMap(true);
+            observer.disconnect();
+          }
+        },
+        { rootMargin: '450px' }
+      );
+      observer.observe(el);
+      return () => observer.disconnect();
+    } else {
+      setShouldLoadMap(true);
+    }
+  }, []);
 
   const handleCopyAddress = () => {
     navigator.clipboard.writeText(businessData.address.fullFormatted);
@@ -256,8 +279,11 @@ export const Location: React.FC = () => {
             </div>
           </div>
 
-          {/* Mapa Incorporado com loading="lazy" e Badge de Geolocalização com Ícone (7 cols) */}
-          <div className="lg:col-span-7 rounded-3xl overflow-hidden border border-[#2C2C2C] bg-[#171717] shadow-xl min-h-[460px] sm:min-h-[540px] relative">
+          {/* Mapa Incorporado diferido com IntersectionObserver e Badge de Geolocalização (7 cols) */}
+          <div
+            ref={mapContainerRef}
+            className="lg:col-span-7 rounded-3xl overflow-hidden border border-[#2C2C2C] bg-[#171717] shadow-xl min-h-[460px] sm:min-h-[540px] relative flex items-center justify-center"
+          >
             {/* Ícone e Badge Flutuante de Geolocalização Ativa sobre o mapa */}
             <div className="absolute top-4 left-4 z-20 pointer-events-none">
               <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0E0E0E]/90 backdrop-blur-md border border-[#F97316]/40 text-[#F5F5F5] shadow-lg">
@@ -275,17 +301,34 @@ export const Location: React.FC = () => {
               </div>
             </div>
 
-            <iframe
-              title="Localização da Garagem Mailasque no Google Maps"
-              src="https://maps.google.com/maps?q=-23.5702156,-47.0743521&hl=pt-BR&z=16&output=embed"
-              width="100%"
-              height="100%"
-              style={{ border: 0, minHeight: '100%' }}
-              allowFullScreen={false}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="w-full h-full grayscale-[25%] contrast-110"
-            />
+            {shouldLoadMap ? (
+              <iframe
+                title="Localização da Garagem Mailasque no Google Maps"
+                src="https://maps.google.com/maps?q=-23.5702156,-47.0743521&hl=pt-BR&z=16&output=embed"
+                width="100%"
+                height="100%"
+                style={{ border: 0, minHeight: '100%' }}
+                allowFullScreen={false}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="w-full h-full grayscale-[25%] contrast-110"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-6 text-center text-[#737373]">
+                <MapPin className="w-8 h-8 text-[#F97316]/60 mb-2 animate-pulse" aria-hidden="true" />
+                <p className="text-xs font-semibold text-[#A3A3A3]">
+                  Carregando mapa interativo ao aproximar da tela...
+                </p>
+                <a
+                  href={businessData.social.googleMaps}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 px-4 py-2 rounded-lg bg-[#222222] text-[#F5F5F5] border border-[#333333] text-xs font-semibold hover:border-[#F97316]/50 transition-colors"
+                >
+                  Abrir no Google Maps
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>

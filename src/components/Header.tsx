@@ -27,6 +27,7 @@ export const Header: React.FC<HeaderProps> = () => {
       'servicos',
       'seguradoras',
       'como-funciona',
+      'antes-e-depois',
       'galeria',
       'avaliacoes',
       'condicoes',

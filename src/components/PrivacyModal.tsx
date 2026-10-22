@@ -548,3 +548,5 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
     </div>
   );
 };
+
+export default PrivacyModal;
