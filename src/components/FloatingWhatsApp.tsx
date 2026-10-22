@@ -183,7 +183,7 @@ export const FloatingWhatsApp: React.FC = () => {
                   )}
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm tracking-tight leading-tight">
+                  <h3 className="font-bold text-sm tracking-tight leading-tight text-white">
                     Garagem Mailasque
                   </h3>
                   <p className="text-[11px] text-white/80 flex items-center gap-1.5 leading-none mt-0.5">
@@ -212,7 +212,7 @@ export const FloatingWhatsApp: React.FC = () => {
               </button>
             </div>
 
-            {/* Área de Mensagens com visual WhatsApp */}
+            {/* Área de Mensagens com visual temático WhatsApp */}
             <div className="p-4 bg-[#0B141A] min-h-[160px] max-h-[220px] overflow-y-auto space-y-3">
               <div className="flex justify-center">
                 <span className="text-[10px] uppercase font-bold text-neutral-400 bg-neutral-900/80 px-2.5 py-1 rounded-full border border-neutral-800">
@@ -270,7 +270,7 @@ export const FloatingWhatsApp: React.FC = () => {
               ease: [0.34, 1.56, 0.64, 1],
             }}
             onClick={handleBubbleClick}
-            className="whatsapp-proactive-bubble pointer-events-auto relative mb-3 w-[270px] sm:w-[290px] rounded-2xl bg-[#141414]/95 backdrop-blur-md text-white p-3.5 shadow-xl shadow-black/60 border border-white/10 hover:border-[#F97316]/30 cursor-pointer group transition-all text-center"
+            className="whatsapp-proactive-bubble pointer-events-auto relative mb-3 w-[270px] sm:w-[290px] rounded-2xl bg-[#141414]/95 backdrop-blur-md text-white p-3.5 shadow-xl shadow-black/60 border border-white/10 hover:border-[#25D366]/40 cursor-pointer group transition-all text-center"
             role="alert"
             aria-live="polite"
           >
@@ -278,7 +278,7 @@ export const FloatingWhatsApp: React.FC = () => {
             <button
               type="button"
               onClick={handleDismissBubble}
-              className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+              className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#25D366]"
               aria-label="Fechar recado do WhatsApp"
             >
               <X className="w-3 h-3" aria-hidden="true" />
@@ -286,8 +286,8 @@ export const FloatingWhatsApp: React.FC = () => {
 
             {/* Conteúdo Centralizado */}
             <div className="flex flex-col items-center text-center px-1">
-              {/* Topo: Avatar + Nome da Oficina + Status Online */}
-              <div className="flex items-center justify-center gap-1.5 mb-1">
+              {/* Topo: Avatar + Nome da Oficina + Status Online (alinhado à esquerda) */}
+              <div className="w-full flex items-center justify-start gap-1.5 mb-1">
                 <div className="relative shrink-0">
                   <div className="w-6 h-6 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center overflow-hidden">
                     <img
@@ -300,15 +300,15 @@ export const FloatingWhatsApp: React.FC = () => {
                   </div>
                   <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#25D366] border border-[#141414]" />
                 </div>
-                <span className="text-xs font-semibold text-white group-hover:text-[#F97316] transition-colors">
+                <span className="text-xs font-semibold text-white hover:text-[#F97316] transition-colors">
                   Garagem Mailasque
                 </span>
                 <span className="text-[10px] text-[#25D366] font-medium shrink-0">· Online</span>
               </div>
 
               {/* Pergunta Centralizada */}
-              <p className="text-[11px] sm:text-xs text-neutral-300 leading-snug text-center max-w-[240px]">
-                Precisa de orçamento para funilaria ou pintura?
+              <p className="text-[11px] sm:text-xs font-bold text-neutral-200 leading-snug text-center max-w-[240px] relative translate-y-[1px]">
+                Olá. Precisa de um orçamento para funilaria ou pintura?
               </p>
 
               {/* CTA Centralizado com Seta Diagonal apontando para o botão flutuante */}
@@ -323,7 +323,7 @@ export const FloatingWhatsApp: React.FC = () => {
 
       {/* 3. Botão Flutuante Principal: Bola com efeito de pulso gradiente em verde degradê e logotipo do WhatsApp */}
       <div className="relative pointer-events-auto flex items-center justify-center">
-        {/* Efeito de pulso gradiente em verde degradê (sem círculos ou bordas rígidas) */}
+        {/* Efeito de pulso gradiente em degradê verde */}
         {!isChatOpen && (
           <span
             className="absolute -inset-1 rounded-full bg-gradient-to-tr from-[#059669] via-[#10B981] to-[#25D366] pointer-events-none animate-whatsapp-gradient-aura"
@@ -331,7 +331,7 @@ export const FloatingWhatsApp: React.FC = () => {
           />
         )}
 
-        {/* Botão de Ação Principal: Exclusivamente a bola em verde degradê com pulso e logotipo do WhatsApp */}
+        {/* Botão de Ação Principal: Bola verde oficial com logotipo do WhatsApp em branco */}
         <a
           href={defaultWhatsAppUrl}
           role="button"
@@ -360,7 +360,7 @@ export const FloatingWhatsApp: React.FC = () => {
             </span>
           )}
 
-          {/* Ícone oficial do WhatsApp ou fechar quando o chat estiver aberto */}
+          {/* Ícone oficial do WhatsApp em branco, ou X em branco quando o chat estiver aberto */}
           {isChatOpen ? (
             <X className="w-6 h-6 text-white transition-transform group-hover:rotate-90" aria-hidden="true" />
           ) : (

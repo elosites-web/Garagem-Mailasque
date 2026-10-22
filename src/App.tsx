@@ -97,14 +97,14 @@ export default function App() {
         {/* 3. Serviços (4 cards especializados) */}
         <Services />
 
-        {/* 4. Seguradoras (Seu carro, sua escolha de oficina) */}
+        {/* 4. Comparador Antes e Depois (Slider Interativo) */}
+        <BeforeAfterSlider />
+
+        {/* 5. Seguradoras (Seu carro, sua escolha de oficina) */}
         <Insurers />
 
-        {/* 5. Diferenciais / Como Funciona */}
+        {/* 6. Diferenciais / Como Funciona */}
         <Workflow />
-
-        {/* 6. Comparador Antes e Depois (Slider Interativo) */}
-        <BeforeAfterSlider />
 
         {/* 7. Galeria da Oficina (Fotos & Vídeos Reais com Lightbox) */}
         <Gallery />

@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShieldCheck, MessageSquare, CheckCircle, FileText, ArrowRight } from 'lucide-react';
+import { ShieldCheck, CheckCircle, FileText, ArrowRight } from 'lucide-react';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
 import { trackEvent } from '../utils/analytics';
 
@@ -55,8 +56,8 @@ export const Insurers: React.FC = () => {
             </div>
 
             {/* Coluna de Ação Direta para Sinistro */}
-            <div className="lg:col-span-4 flex flex-col justify-center items-start lg:items-end">
-              <div className="w-full sm:w-auto bg-[#1F1F1F] border border-[#2C2C2C] p-6 rounded-2xl flex flex-col gap-4 text-left">
+            <div className="lg:col-span-4 flex flex-col justify-center items-center">
+              <div className="w-full sm:w-auto bg-[#1F1F1F] border border-[#2C2C2C] p-6 rounded-2xl flex flex-col gap-4 text-left mx-auto">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-[#F97316]/10 border border-[#F97316]/30 flex items-center justify-center text-[#F97316]">
                     <FileText className="w-5 h-5" aria-hidden="true" />
@@ -77,7 +78,7 @@ export const Insurers: React.FC = () => {
                   onClick={handleInsuranceWhatsAppClick}
                   className="inline-flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-[#0A0A0A] font-bold text-sm transition-all duration-150 shadow-md focus-visible:outline-2 focus-visible:outline-[#F97316]"
                 >
-                  <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <WhatsAppIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
                   <span>Fiz sinistro, como funciona?</span>
                   <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
                 </a>

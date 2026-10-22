@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Calculator, CreditCard, QrCode, Smartphone, Sparkles, MessageSquare } from 'lucide-react';
+import { Calculator, CreditCard, QrCode, Smartphone, Sparkles } from 'lucide-react';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
 import { trackEvent } from '../utils/analytics';
 
@@ -172,7 +173,7 @@ export const PaymentSimulator: React.FC = () => {
                 onClick={() => trackEvent('whatsapp_click', { section: 'simulator' })}
                 className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-[#0A0A0A] font-bold text-sm tracking-wide transition-colors duration-150 shadow-md focus-visible:outline-2 focus-visible:outline-[#F97316] mb-4"
               >
-                <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <WhatsAppIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>Pedir avaliação desse valor no WhatsApp</span>
               </a>
 

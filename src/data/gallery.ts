@@ -4,6 +4,7 @@ export interface GalleryPhoto {
   src: string;
   alt: string;
   caption: string;
+  serviceName?: string;
   category: 'instalacoes' | 'equipe';
   width: number;
   height: number;
@@ -20,6 +21,7 @@ export interface GalleryTeamSlide {
   id: string;
   type: 'team';
   caption: string;
+  serviceName?: string;
   category: 'equipe';
   photos: [TeamPhotoItem, TeamPhotoItem];
 }
@@ -33,6 +35,7 @@ export interface GalleryVideo {
   height: number;
   title: string;
   description: string;
+  serviceName?: string;
 }
 
 export type GalleryItem = GalleryPhoto | GalleryTeamSlide | GalleryVideo;
@@ -46,6 +49,7 @@ export const galleryPhotosList: (GalleryPhoto | GalleryTeamSlide)[] = [
     height: 583,
     alt: 'Estacionamento e fachada da Garagem Mailasque com letreiro Funilaria e Pintura',
     caption: 'Estacionamento',
+    serviceName: 'Estrutura e Acesso Fácil',
     category: 'instalacoes',
   },
   {
@@ -56,6 +60,7 @@ export const galleryPhotosList: (GalleryPhoto | GalleryTeamSlide)[] = [
     height: 1417,
     alt: 'Sala de recepção da Garagem Mailasque, com cadeiras, balcão e parede laranja',
     caption: 'Recepção',
+    serviceName: 'Atendimento & Avaliação de Sinistro',
     category: 'instalacoes',
   },
   {
@@ -66,6 +71,7 @@ export const galleryPhotosList: (GalleryPhoto | GalleryTeamSlide)[] = [
     height: 1011,
     alt: 'Estufa de pintura da Garagem Mailasque, com paredes brancas e laranja, luzes de LED e piso escuro com borda vermelha',
     caption: 'Estufa de pintura',
+    serviceName: 'Pintura Automotiva em Estufa Pressurizada',
     category: 'instalacoes',
   },
   {
@@ -76,6 +82,7 @@ export const galleryPhotosList: (GalleryPhoto | GalleryTeamSlide)[] = [
     height: 787,
     alt: 'Equipe da Garagem Mailasque reunida na oficina',
     caption: 'Equipe Garagem Mailasque',
+    serviceName: 'Funilaria e Pintura Especializada',
     category: 'equipe',
   },
   {
@@ -86,6 +93,7 @@ export const galleryPhotosList: (GalleryPhoto | GalleryTeamSlide)[] = [
     height: 500,
     alt: 'Equipe da Garagem Mailasque posando na oficina',
     caption: 'Equipe Garagem Mailasque',
+    serviceName: 'Acabamento e Montagem Técnica',
     category: 'equipe',
   },
 ];
@@ -100,6 +108,7 @@ export const galleryVideosList: GalleryVideo[] = [
     height: 720,
     title: 'Trabalho na dianteira',
     description: 'Profissional com ferramenta elétrica na região do farol de um carro branco.',
+    serviceName: 'Alinhamento e Recuperação de Dianteira',
   },
   {
     id: 'video-2',
@@ -110,6 +119,7 @@ export const galleryVideosList: GalleryVideo[] = [
     height: 768,
     title: 'Preparação da lataria',
     description: 'Lixamento na dianteira de um carro com o para-choque removido.',
+    serviceName: 'Preparação Técnica e Lixamento',
   },
   {
     id: 'video-3',
@@ -120,6 +130,7 @@ export const galleryVideosList: GalleryVideo[] = [
     height: 768,
     title: 'Reparo na dianteira',
     description: 'Visão geral do trabalho de funilaria em um carro branco com o capô aberto.',
+    serviceName: 'Funilaria Estrutural e Desempeno',
   },
   {
     id: 'video-4',
@@ -130,6 +141,7 @@ export const galleryVideosList: GalleryVideo[] = [
     height: 768,
     title: 'Solda na chapa',
     description: 'Profissional trabalhando na chapa do capô de um carro vermelho.',
+    serviceName: 'Solda Automotiva e Conformação de Chapa',
   },
   {
     id: 'video-5',
@@ -140,6 +152,7 @@ export const galleryVideosList: GalleryVideo[] = [
     height: 768,
     title: 'Funilaria em carro vermelho',
     description: 'Reparo na chapa do capô, com faíscas durante o trabalho.',
+    serviceName: 'Funilaria Artesanal e Martelinho',
   },
   {
     id: 'video-6',
@@ -150,6 +163,7 @@ export const galleryVideosList: GalleryVideo[] = [
     height: 768,
     title: 'Acabamento da lataria',
     description: 'Profissional trabalhando na lataria de um carro vermelho.',
+    serviceName: 'Acabamento Fino e Pintura Automotiva',
   },
 ];
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Hammer, PaintBucket, Wrench, ShieldCheck, MessageSquare, ArrowUpRight } from 'lucide-react';
+import { Hammer, PaintBucket, Wrench, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { motion, useReducedMotion } from 'motion/react';
 import { services, ServiceItem } from '../data/services';
 import { buildWhatsAppUrl } from '../data/business';
@@ -106,7 +107,7 @@ export const Services: React.FC = () => {
                   className="w-full inline-flex items-center justify-between px-4 py-3 rounded-lg bg-[#222222] hover:bg-[#F97316] text-[#F5F5F5] hover:text-[#0A0A0A] border border-[#2C2C2C] hover:border-[#F97316] font-bold text-xs uppercase tracking-wider transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-[#F97316]"
                 >
                   <span className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    <WhatsAppIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
                     <span>Orçar {service.name}</span>
                   </span>
                   <ArrowUpRight className="w-4 h-4 shrink-0" aria-hidden="true" />

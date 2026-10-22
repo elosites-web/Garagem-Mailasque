@@ -138,22 +138,6 @@
 @keyframes whatsapp-gradient-pulse {
   0% {
     background-position: 0% 50%;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 18px 2px rgba(37, 211, 102, 0.45);
-  }
-  50% {
-    background-position: 100% 50%;
-    box-shadow: 0 14px 30px -4px rgba(0, 0, 0, 0.6), 0 0 28px 6px rgba(37, 211, 102, 0.75);
-  }
-  100% {
-    background-position: 0% 50%;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 18px 2px rgba(37, 211, 102, 0.45);
-  }
-}
-
-/* Efeito de pulso gradiente contínuo em verde degradê */
-@keyframes whatsapp-gradient-pulse {
-  0% {
-    background-position: 0% 50%;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 16px 2px rgba(37, 211, 102, 0.45);
   }
   50% {

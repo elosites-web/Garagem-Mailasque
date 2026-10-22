@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, MessageSquare } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
 import { trackEvent } from '../utils/analytics';
 
@@ -25,9 +26,9 @@ export const Header: React.FC<HeaderProps> = () => {
     const sectionIds = [
       'inicio',
       'servicos',
+      'antes-e-depois',
       'seguradoras',
       'como-funciona',
-      'antes-e-depois',
       'galeria',
       'avaliacoes',
       'condicoes',
@@ -236,7 +237,7 @@ export const Header: React.FC<HeaderProps> = () => {
               onClick={handleWhatsAppClick}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#F97316] hover:bg-[#EA580C] text-[#0A0A0A] font-bold text-sm tracking-wide transition-colors duration-150 shadow-md whitespace-nowrap focus-visible:outline-2 focus-visible:outline-[#F97316]"
             >
-              <MessageSquare className="w-4 h-4" aria-hidden="true" />
+              <WhatsAppIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>Pedir orçamento</span>
             </a>
           </div>
@@ -334,7 +335,7 @@ export const Header: React.FC<HeaderProps> = () => {
                 }}
                 className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-lg bg-[#F97316] text-[#0A0A0A] font-bold text-base shadow-lg hover:bg-[#EA580C] transition-colors"
               >
-                <MessageSquare className="w-5 h-5" aria-hidden="true" />
+                <WhatsAppIcon className="w-5 h-5 shrink-0" aria-hidden="true" />
                 <span>Pedir orçamento no WhatsApp</span>
               </a>
 

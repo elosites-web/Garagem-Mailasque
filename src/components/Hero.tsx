@@ -1,5 +1,6 @@
 import React from 'react';
-import { MessageSquare, ArrowDown, Star, Shield, CheckCircle2 } from 'lucide-react';
+import { ArrowDown, Star, Shield, CheckCircle2 } from 'lucide-react';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
 import { trackEvent } from '../utils/analytics';
 
@@ -77,7 +78,7 @@ export const Hero: React.FC = () => {
                 onClick={handleCtaClick}
                 className="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-[#0A0A0A] font-bold text-base md:text-lg tracking-wide transition-all duration-150 shadow-xl hover:shadow-[#F97316]/20 hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-[#F97316]"
               >
-                <MessageSquare className="w-5 h-5 shrink-0" aria-hidden="true" />
+                <WhatsAppIcon className="w-5 h-5 shrink-0" aria-hidden="true" />
                 <span>Solicitar orçamento no WhatsApp</span>
               </a>
 
@@ -145,7 +146,7 @@ export const Hero: React.FC = () => {
                   Infraestrutura Própria
                 </span>
                 <p className="text-sm font-semibold text-[#F5F5F5] leading-snug">
-                  Câmara de pintura pressurizada para acabamento limpo e fidelidade de cor
+                  Estufa de pintura pressurizada para acabamento limpo e fidelidade de cor
                 </p>
                 <p className="text-xs text-[#A3A3A3] mt-0.5">
                   Rod. Raposo Tavares, Km 54,65 · Mailasqui

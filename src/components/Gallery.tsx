@@ -12,6 +12,51 @@ import {
 import { LightboxModal } from './LightboxModal';
 import { trackEvent } from '../utils/analytics';
 
+interface GalleryImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+  containerClassName?: string;
+}
+
+/**
+ * Componente otimizado de imagem preguiçosa (Lazy Loading) para a galeria e carrossel.
+ * Renderiza skeleton de carregamento e transição suave de fade-in ao completar o carregamento.
+ */
+const GalleryImage: React.FC<GalleryImageProps> = ({
+  src,
+  alt,
+  width,
+  height,
+  className = '',
+  containerClassName = '',
+  style,
+  ...props
+}) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div className={`relative overflow-hidden bg-[#1A1A1A] ${containerClassName}`} style={style}>
+      {!isLoaded && (
+        <div
+          className="absolute inset-0 bg-[#222222] animate-pulse pointer-events-none z-0"
+          aria-hidden="true"
+        />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setIsLoaded(true)}
+        className={`${className} transition-opacity duration-500 ease-out ${
+          isLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
+        {...props}
+      />
+    </div>
+  );
+};
+
 export const Gallery: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'photos' | 'videos'>('all');
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -258,23 +303,23 @@ export const Gallery: React.FC = () => {
                     {/* Caso 1: Slide unificado da equipe com as duas fotos lado a lado */}
                     {isTeam ? (
                       <div className="flex flex-row items-center gap-2 h-full p-2 bg-[#1A1A1A] relative">
-                        <img
+                        <GalleryImage
                           src={(item as GalleryTeamSlide).photos[0].src}
                           alt={(item as GalleryTeamSlide).photos[0].alt}
                           width={(item as GalleryTeamSlide).photos[0].width}
                           height={(item as GalleryTeamSlide).photos[0].height}
-                          loading="lazy"
+                          containerClassName="h-full rounded-xl overflow-hidden"
                           className="h-full w-auto object-cover rounded-xl transition-transform duration-300 group-hover:scale-[1.02]"
                           style={{
                             aspectRatio: `${(item as GalleryTeamSlide).photos[0].width} / ${(item as GalleryTeamSlide).photos[0].height}`,
                           }}
                         />
-                        <img
+                        <GalleryImage
                           src={(item as GalleryTeamSlide).photos[1].src}
                           alt={(item as GalleryTeamSlide).photos[1].alt}
                           width={(item as GalleryTeamSlide).photos[1].width}
                           height={(item as GalleryTeamSlide).photos[1].height}
-                          loading="lazy"
+                          containerClassName="h-full rounded-xl overflow-hidden"
                           className="h-full w-auto object-cover rounded-xl transition-transform duration-300 group-hover:scale-[1.02]"
                           style={{
                             aspectRatio: `${(item as GalleryTeamSlide).photos[1].width} / ${(item as GalleryTeamSlide).photos[1].height}`,
@@ -318,21 +363,21 @@ export const Gallery: React.FC = () => {
                         style={{ aspectRatio: `${item.width} / ${item.height}` }}
                       >
                         {isVideo ? (
-                          <img
+                          <GalleryImage
                             src={(item as GalleryVideo).poster}
                             alt={`Capa do vídeo: ${(item as GalleryVideo).title}`}
                             width={item.width}
                             height={item.height}
-                            loading="lazy"
+                            containerClassName="h-full w-full"
                             className="h-full w-auto object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                         ) : (
-                          <img
+                          <GalleryImage
                             src={item.src}
                             alt={item.alt}
                             width={item.width}
                             height={item.height}
-                            loading="lazy"
+                            containerClassName="h-full w-full"
                             className="h-full w-auto object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                         )}

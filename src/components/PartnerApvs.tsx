@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShieldCheck, MessageSquare } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
 import { trackEvent } from '../utils/analytics';
 
@@ -27,6 +28,7 @@ export const PartnerApvs: React.FC = () => {
                 width={600}
                 height={400}
                 loading="lazy"
+                decoding="async"
                 className="w-full h-auto object-cover max-h-72"
               />
             </div>
@@ -64,7 +66,7 @@ export const PartnerApvs: React.FC = () => {
                   onClick={handlePartnerClick}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#222222] hover:bg-[#2C2C2C] text-[#F5F5F5] border border-[#2C2C2C] text-xs font-bold uppercase tracking-wider transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
                 >
-                  <MessageSquare className="w-4 h-4 text-[#F97316]" aria-hidden="true" />
+                  <WhatsAppIcon className="w-4 h-4 text-[#F97316] shrink-0" aria-hidden="true" />
                   <span>Saber mais sobre a APVS na oficina</span>
                 </a>
 

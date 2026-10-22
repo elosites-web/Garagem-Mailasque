@@ -15,6 +15,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
   const [activeCaseIndex, setActiveCaseIndex] = useState(0);
   const [sliderPosition, setSliderPosition] = useState(50); // Porcentagem vertical de 0 a 100 (topo para base)
   const [isDragging, setIsDragging] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [beforeLoaded, setBeforeLoaded] = useState(false);
   const [afterLoaded, setAfterLoaded] = useState(false);
 
@@ -54,6 +55,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     setIsDragging(true);
+    setHasUserInteracted(true);
     updateSliderPosition(e.clientY);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
@@ -91,6 +93,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
 
   // Acessibilidade via teclado para o divisor slider
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    setHasUserInteracted(true);
     let newPos = sliderPosition;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
       newPos = Math.max(0, sliderPosition - 2);
@@ -224,35 +227,72 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                   />
                 </div>
 
-                {/* Etiquetas Fixas de Identificação "Antes" (Topo) e "Depois" (Base) */}
-                <span className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-md bg-black/75 backdrop-blur-sm border border-white/20 text-white font-bold text-[10px] sm:text-xs uppercase tracking-wider pointer-events-none shadow-md">
+                {/* Etiquetas Fixas de Identificação "Antes" (Topo) e "Depois" (Base) com fade-out dinâmico */}
+                <span
+                  className={`absolute top-3 left-3 sm:top-4 sm:left-4 z-10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-md bg-black/80 backdrop-blur-sm border border-white/20 text-white font-bold text-[10px] sm:text-xs uppercase tracking-wider pointer-events-none shadow-md transition-all duration-300 ${
+                    sliderPosition < 15
+                      ? 'opacity-0 scale-90 -translate-y-2 pointer-events-none'
+                      : 'opacity-100 scale-100 translate-y-0'
+                  }`}
+                >
                   Antes (Topo)
                 </span>
-                <span className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-md bg-[#F97316]/90 backdrop-blur-sm border border-black/20 text-[#0A0A0A] font-bold text-[10px] sm:text-xs uppercase tracking-wider pointer-events-none shadow-md">
+                <span
+                  className={`absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-md bg-[#F97316]/95 backdrop-blur-sm border border-black/20 text-[#0A0A0A] font-bold text-[10px] sm:text-xs uppercase tracking-wider pointer-events-none shadow-md transition-all duration-300 ${
+                    sliderPosition > 85
+                      ? 'opacity-0 scale-90 translate-y-2 pointer-events-none'
+                      : 'opacity-100 scale-100 translate-y-0'
+                  }`}
+                >
                   Depois (Base)
                 </span>
 
-                {/* Divisor Horizontal Arrastável com Linha e Manopla Central */}
+                {/* Divisor Horizontal Arrastável com Linha, Dica Visual e Manopla Central */}
                 <div
                   className="absolute left-0 right-0 z-20 pointer-events-none"
                   style={{ top: `${sliderPosition}%`, transform: 'translateY(-50%)' }}
                 >
-                  {/* Linha horizontal */}
-                  <div className="h-0.5 w-full bg-white shadow-[0_0_8px_rgba(0,0,0,0.8)]" />
+                  {/* Linha horizontal com realce luminoso */}
+                  <div className="h-0.5 w-full bg-white shadow-[0_0_8px_rgba(0,0,0,0.8)] relative">
+                    {!hasUserInteracted && (
+                      <div className="absolute inset-0 bg-[#F97316] opacity-75 blur-[1px] animate-pulse" />
+                    )}
+                  </div>
+
+                  {/* Dica visual animada de 'Arraste' para dispositivos móveis e desktop */}
+                  {!hasUserInteracted && !isDragging && (
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 -top-10 sm:-top-11 pointer-events-none z-30 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F97316] text-[#0A0A0A] font-extrabold text-[10px] sm:text-xs tracking-wider uppercase shadow-[0_4px_16px_rgba(0,0,0,0.8)] border border-black/30 animate-bounce whitespace-nowrap"
+                      aria-hidden="true"
+                    >
+                      <ArrowUpDown className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Arraste para comparar</span>
+                    </div>
+                  )}
 
                   {/* Manopla interativa acessível com papel de slider vertical */}
-                  <div
-                    role="slider"
-                    tabIndex={0}
-                    aria-label="Controle vertical do comparador antes e depois"
-                    aria-orientation="vertical"
-                    aria-valuenow={Math.round(sliderPosition)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    onKeyDown={handleKeyDown}
-                    className="pointer-events-auto absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#0A0A0A] shadow-[0_4px_16px_rgba(0,0,0,0.6)] border-2 border-[#F97316] flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#F97316] cursor-grab active:cursor-grabbing"
-                  >
-                    <ArrowUpDown className="w-4 h-4 text-[#0A0A0A]" aria-hidden="true" />
+                  <div className="relative pointer-events-auto">
+                    {/* Efeito de aura pulsante convidando ao toque em mobile */}
+                    {!hasUserInteracted && !isDragging && (
+                      <span
+                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#F97316]/50 animate-ping pointer-events-none"
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    <div
+                      role="slider"
+                      tabIndex={0}
+                      aria-label="Controle vertical do comparador antes e depois"
+                      aria-orientation="vertical"
+                      aria-valuenow={Math.round(sliderPosition)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      onKeyDown={handleKeyDown}
+                      className="pointer-events-auto absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-[#0A0A0A] shadow-[0_4px_16px_rgba(0,0,0,0.6)] border-2 border-[#F97316] flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#F97316] cursor-grab active:cursor-grabbing"
+                    >
+                      <ArrowUpDown className="w-4 h-4 text-[#0A0A0A]" aria-hidden="true" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -282,9 +322,9 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => trackEvent('whatsapp_click', { section: 'before-after-cta' })}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#25D366] hover:bg-[#20BA5A] text-[#0E2C1B] font-extrabold text-xs sm:text-sm tracking-wide transition-all duration-150 shrink-0 shadow-lg hover:shadow-[#25D366]/20 focus-visible:outline-2 focus-visible:outline-[#25D366]"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-[#0A0A0A] font-extrabold text-xs sm:text-sm tracking-wide transition-all duration-150 shrink-0 shadow-lg hover:shadow-[#F97316]/20 focus-visible:outline-2 focus-visible:outline-[#F97316]"
                 >
-                  <WhatsAppIcon className="w-4 h-4 fill-current" />
+                  <WhatsAppIcon className="w-4 h-4 shrink-0 fill-current" />
                   <span>Cotação para o seu carro</span>
                 </a>
               </div>

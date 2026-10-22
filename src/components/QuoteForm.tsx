@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { MessageSquare, Send, CheckCircle2, AlertCircle, Wrench, Calendar, FileText } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Wrench, Calendar, FileText } from 'lucide-react';
+import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { services } from '../data/services';
 import { buildWhatsAppUrl } from '../data/business';
 import { trackEvent } from '../utils/analytics';
@@ -493,7 +494,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
                   disabled={isSubmitting}
                   className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-[#0A0A0A] font-bold text-base tracking-wide transition-all duration-150 shadow-xl hover:shadow-[#F97316]/20 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-[#F97316]"
                 >
-                  <Send className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <WhatsAppIcon className="w-5 h-5 shrink-0" aria-hidden="true" />
                   <span>Enviar dados e abrir no WhatsApp</span>
                 </button>
                 <p className="text-[11px] text-[#737373] text-center mt-2">
