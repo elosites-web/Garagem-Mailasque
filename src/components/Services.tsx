@@ -1,5 +1,6 @@
 import React from 'react';
 import { Hammer, PaintBucket, Wrench, ShieldCheck, MessageSquare, ArrowUpRight } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { services, ServiceItem } from '../data/services';
 import { buildWhatsAppUrl } from '../data/business';
 import { trackEvent } from '../utils/analytics';
@@ -12,6 +13,8 @@ const iconMap = {
 };
 
 export const Services: React.FC = () => {
+  const shouldReduceMotion = useReducedMotion();
+
   const handleServiceClick = (serviceName: string) => {
     trackEvent('whatsapp_click', { section: 'services', service: serviceName });
   };
@@ -22,6 +25,8 @@ export const Services: React.FC = () => {
       aria-labelledby="services-title"
       className="py-20 md:py-28 bg-[#121212] border-b border-[#2C2C2C] relative"
     >
+      {/* Âncora alternativa para #servicos-oficina */}
+      <div id="servicos-oficina" className="sr-only" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Cabeçalho da Seção */}
         <div className="max-w-3xl mx-auto text-center mb-16">
@@ -39,14 +44,23 @@ export const Services: React.FC = () => {
           </p>
         </div>
 
-        {/* Grid dos 4 Serviços */}
+        {/* Grid dos 4 Serviços com animação fade-in up */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {services.map((service: ServiceItem, index) => {
             const IconComponent = iconMap[service.iconName];
             return (
-              <div
+              <motion.div
                 key={service.id}
-                className="group relative rounded-2xl bg-[#171717] border border-[#2C2C2C] p-6 flex flex-col justify-between hover:border-[#F97316]/50 hover:bg-[#1C1C1C] transition-all duration-200 hover:-translate-y-1 shadow-lg"
+                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{
+                  duration: shouldReduceMotion ? 0 : 0.5,
+                  delay: shouldReduceMotion ? 0 : index * 0.1,
+                  ease: [0.21, 0.47, 0.32, 0.98],
+                }}
+                whileHover={shouldReduceMotion ? undefined : { y: -4 }}
+                className="group relative rounded-2xl bg-[#171717] border border-[#2C2C2C] p-6 flex flex-col justify-between hover:border-[#F97316]/50 hover:bg-[#1C1C1C] transition-colors duration-200 shadow-lg"
               >
                 <div>
                   {/* Cabeçalho do Card: Ícone e Índice Editorial */}
@@ -97,7 +111,7 @@ export const Services: React.FC = () => {
                   </span>
                   <ArrowUpRight className="w-4 h-4 shrink-0" aria-hidden="true" />
                 </a>
-              </div>
+              </motion.div>
             );
           })}
         </div>

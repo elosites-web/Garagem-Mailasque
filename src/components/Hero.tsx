@@ -8,6 +8,15 @@ export const Hero: React.FC = () => {
     trackEvent('whatsapp_click', { section: 'hero' });
   };
 
+  const handleVerServicosClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const target = document.getElementById('servicos');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+      window.history.pushState(null, '', '#servicos');
+    }
+  };
+
   const handleGoogleReviewsClick = () => {
     trackEvent('maps_click', { section: 'hero-rating' });
   };
@@ -18,6 +27,8 @@ export const Hero: React.FC = () => {
       aria-labelledby="hero-title"
       className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden border-b border-[#2C2C2C]"
     >
+      {/* Âncora alternativa para #hero */}
+      <div id="hero" className="sr-only" aria-hidden="true" />
       {/* Background Decorativo Metálico Sutil */}
       <div
         className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#F97316]/20 via-transparent to-transparent"
@@ -72,6 +83,7 @@ export const Hero: React.FC = () => {
 
               <a
                 href="#servicos"
+                onClick={handleVerServicosClick}
                 className="inline-flex items-center justify-center gap-2 px-5 py-4 rounded-xl bg-[#171717] hover:bg-[#222222] text-[#F5F5F5] border border-[#2C2C2C] hover:border-[#C9CDD2]/30 font-semibold text-base transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-[#F97316]"
               >
                 <span>Ver serviços</span>

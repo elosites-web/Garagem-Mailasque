@@ -35,6 +35,8 @@ export const Workflow: React.FC = () => {
       aria-labelledby="workflow-title"
       className="py-20 md:py-28 bg-[#171717] border-b border-[#2C2C2C] relative"
     >
+      {/* Âncora alternativa para #processo */}
+      <div id="processo" className="sr-only" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center mb-16">
           <span className="text-xs font-bold uppercase tracking-widest text-[#F97316] mb-3 block">

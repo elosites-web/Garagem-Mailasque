@@ -9,6 +9,8 @@ export const Faq: React.FC = () => {
       aria-labelledby="faq-title"
       className="py-20 md:py-28 bg-[#121212] border-b border-[#2C2C2C] relative"
     >
+      {/* Âncora alternativa para #duvidas */}
+      <div id="duvidas" className="sr-only" aria-hidden="true" />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#F97316] mb-3">

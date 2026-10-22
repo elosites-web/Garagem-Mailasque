@@ -14,6 +14,8 @@ export const PartnerApvs: React.FC = () => {
       aria-labelledby="apvs-title"
       className="py-16 md:py-20 bg-[#121212] border-b border-[#2C2C2C] relative"
     >
+      {/* Âncora alternativa para #apvs */}
+      <div id="apvs" className="sr-only" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl bg-[#171717] border border-[#2C2C2C] p-6 sm:p-10 shadow-xl overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">

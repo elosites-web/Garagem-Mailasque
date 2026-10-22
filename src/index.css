@@ -2,10 +2,19 @@
 @import "./styles/tokens.css";
 
 @layer base {
+  :root,
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
     font-family: var(--fonte-primaria);
     color-scheme: dark;
+  }
+
+  @media (min-width: 768px) {
+    :root,
+    html {
+      scroll-padding-top: 5.5rem;
+    }
   }
 
   body {
@@ -44,4 +53,31 @@
 /* Efeito de borda metálica sutil */
 .border-silver-subtle {
   border-color: rgba(201, 205, 210, 0.18);
+}
+
+/* Animação de pulso contínua na borda a cada 5 segundos para chamar atenção sem distrair */
+@keyframes whatsapp-border-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.75);
+    opacity: 0.95;
+  }
+  20% {
+    box-shadow: 0 0 0 8px rgba(37, 211, 102, 0);
+    opacity: 0;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+    opacity: 0;
+  }
+}
+
+.animate-border-pulse-5s {
+  animation: whatsapp-border-pulse 5s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-border-pulse-5s {
+    animation: none !important;
+    display: none !important;
+  }
 }

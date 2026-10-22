@@ -185,6 +185,46 @@ export function getCurrentDayOfWeekSaoPaulo(): number {
 }
 
 /**
+ * Verifica se a oficina está em horário de atendimento no fuso de São Paulo (America/Sao_Paulo),
+ * em conformidade com o openingHoursSpecification do Schema.org / JSON-LD:
+ * - Seg, Qua, Qui, Sex: 08:00 às 18:00
+ * - Terça: 08:00 às 18:30
+ * - Sábado: 08:00 às 12:00
+ * - Domingo: Fechado
+ */
+export function isWorkshopOpenNow(): boolean {
+  try {
+    const now = new Date();
+    const spDateStr = now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+    const spDate = new Date(spDateStr);
+    const day = spDate.getDay(); // 0 = Domingo, 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb
+    const currentMinutes = spDate.getHours() * 60 + spDate.getMinutes();
+
+    // Domingo fechado
+    if (day === 0) return false;
+
+    // Sábado: 08:00 às 12:00
+    if (day === 6) {
+      return currentMinutes >= 8 * 60 && currentMinutes < 12 * 60;
+    }
+
+    // Terça-feira: 08:00 às 18:30
+    if (day === 2) {
+      return currentMinutes >= 8 * 60 && currentMinutes < 18 * 60 + 30;
+    }
+
+    // Segunda, Quarta, Quinta, Sexta: 08:00 às 18:00
+    if ([1, 3, 4, 5].includes(day)) {
+      return currentMinutes >= 8 * 60 && currentMinutes < 18 * 60;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Função utilitária para gerar links do WhatsApp padronizados
  * com parâmetros de origem para rastreamento interno do cliente
  */

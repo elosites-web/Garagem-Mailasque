@@ -1,152 +1,124 @@
-# Landing Page de Alta Conversão — Garagem Mailasque
+# Reestruturação da Seção Galeria — Carrossel Horizontal Compacto
 
-Landing page de página única ultra-otimizada para conversão da **Garagem Mailasque**, oficina especializada em funilaria e pintura automotiva localizada em Mailasqui (São Roque/SP). O projeto visa transformar visitantes em solicitações qualificadas de orçamento via WhatsApp com máxima credibilidade, prova social autêntica, simulador financeiro transparente e acessibilidade WCAG 2.1 AA.
+Transformação da seção de Galeria da Garagem Mailasque de uma grade vertical extensa para uma faixa horizontal única e fluida com CSS scroll-snap, ocupando no máximo ~1 viewport, com controles acessíveis de navegação por toque, teclado e botões, além de slide unificado para fotos da equipe e lightbox responsivo.
 
----
-
-### User Review & Critical Decisions
+## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> **Decisões confirmadas e diretrizes fundamentais alinhadas com o cliente:**
-> - **Foco de Tráfego**: Foco inicial em busca orgânica e Google Maps, com arquitetura pronta para Google Ads (GA4/GTM) e Meta Ads (Pixel) ativada sob demanda via variáveis de ambiente (`.env`).
-> - **Créditos do Rodapé**: Exibição discreta de *"Desenvolvido por ēloSites"* ao lado das informações institucionais e de controladoria LGPD.
-> - **Vídeos Reais da Oficina na Galeria**: Grade com cards de pré-visualização e reprodução sob clique em modal lightbox acessível (teclado, foco preso, Esc para fechar, sem autoplay invasivo com som).
-> - **Regra de Ouro (Zero Invenção)**: Ausência de dados (como horário numérico) utiliza o marcador `{{TODO_CLIENT}}` em `src/data/` e renderiza o botão "Ver no Google Maps" no lugar; sem promessas inventadas de prazos, anos de experiência ou garantias milagrosas.
-> - **Catálogo Exato de Serviços**: Estritamente os 4 serviços autorizados: **Funilaria**, **Pintura**, **Martelinho** e **Revisão preventiva**.
+> Decisões confirmadas com o usuário durante o alinhamento da Fase 1:
+
+- **Comportamento do Lightbox para a Equipe**: Ao clicar no slide da equipe, o Lightbox exibirá as duas fotos lado a lado no próprio visualizador modal, preservando a composição conjunta com legenda unificada.
+- **Legenda do Slide de Equipe**: A legenda única definida para o slide no carrossel e no lightbox é **"Equipe Garagem Mailasque"**.
+- **Proporção e Altura Sem Distorção**: Todos os slides adotarão altura padronizada (`h-[240px] sm:h-[300px] lg:h-[360px]`) e largura automática baseada na proporção nativa dos arquivos (`aspect-ratio: width / height`), assegurando visualização sem cortes de fotos horizontais, verticais e vídeos 9:16.
+- **Substituição de Ativos e Metatags**: Remoção definitiva de qualquer referência a `card-apresentacao.jpg` e confirmação dos posters reais dos 6 vídeos e de `og-image.jpg`.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **O que a aplicação faz**: Apresenta a oficina mecânica de funilaria e pintura com proposta de valor direta, prova social com 6 depoimentos reais do Google (nota 4,9 com 79 avaliações), atendimento a todas as seguradoras (livre escolha da oficina pelo cliente), simulador de parcelamento (3x sem juros ou 5% OFF à vista/PIX), galeria com fotos e vídeos reais das instalações (câmara de pintura, equipe, pátio) e formulário de orçamento instantâneo que despacha mensagem pré-formatada para o WhatsApp da oficina.
-- **Público-alvo**: Proprietários de veículos em Mailasqui, São Roque e região metropolitana/Sorocaba que sofreram colisões, pequenos amassados, precisam de pintura profissional, revisão preventiva ou acionaram seguro e buscam transparência e acabamento de alto padrão.
-- **Objetivo central de conversão**: Conduzir o visitante a solicitar orçamento no WhatsApp (`https://wa.me/5511995625484`), identificando a seção de origem no texto da mensagem (`[site-hero]`, `[site-servicos]`, `[site-seguradoras]`, `[site-form]`).
+- **O que faz**: Compacta a galeria da oficina em uma faixa horizontal com scroll lateral (`scroll-snap-type: x mandatory`), reduzindo o consumo vertical da página e permitindo que o visitante explore toda a infraestrutura física e filmagens técnicas sem rolagem interminável.
+- **Público-alvo**: Clientes locais em busca de serviços de funilaria, pintura automotiva e reparos por seguradoras em Mailasqui e São Roque/SP, que valorizam transparência visual sobre a infraestrutura e os profissionais.
+- **Valor gerado**: Aumento significativo na retenção e no engajamento visual na página (seção enxuta que cabe em ~1 tela), proporcionando uma experiência refinada tanto no desktop quanto no toque em dispositivos móveis.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### A. Fluxo de Navegação e Seções (Ordem Estruturada)
-1. **Header Fixo (Top Bar Contract)**:
-   - Zona 1: Logo oficial `logo-garagem-mailasque.png` com link para o topo.
-   - Zona 2: Links de navegação ancorados (*Serviços*, *Diferenciais*, *Galeria*, *Avaliações*, *Condições*, *Localização*) com `whitespace-nowrap` e menu mobile em drawer acessível (foco preso, Esc para fechar).
-   - Zona 3: CTA de ação imediata: "Pedir orçamento".
-2. **Hero Section**:
-   - Headline H1 em destaque: *"Funilaria e pintura automotiva para devolver ao seu carro a aparência de zero km"*.
-   - Subtítulo com localização estratégica: *"Atendimento transparente, cuidadoso e ágil em Mailasqui, São Roque/SP e região"*.
-   - Prova social adjacente: Selo *"4,9 no Google (79 avaliações)"* com link direto para o Google Maps.
-   - Badges de confiança textuais: *"Atendemos todas as seguradoras · Escolha livre da oficina"*.
-   - CTAs: Primário *"Solicitar orçamento no WhatsApp"* e secundário *"Ver serviços"*.
-3. **Serviços Especializados (4 Cards)**:
-   - Grid de 4 serviços: *Funilaria*, *Pintura*, *Martelinho*, *Revisão preventiva*.
-   - Ícones dedicados (Lucide), síntese em 1-2 linhas de acabamento impecável (sem prazos inventados), e link individual para WhatsApp pré-configurado com o serviço escolhido.
-4. **Seguradoras ("Seu carro, sua escolha de oficina")**:
-   - Explicação clara dos direitos do segurado no Brasil (liberdade legal de escolher a oficina de preferência para o conserto do sinistro).
-   - Botão rápido: *"Fiz sinistro, como funciona no WhatsApp"*.
-5. **Diferenciais & Como Funciona**:
-   - Etapas do atendimento: *1. Orçamento transparente* → *2. Aprovação detalhada* → *3. Execução cuidadosa* → *4. Entrega com acabamento impecável*.
-6. **Galeria da Oficina & Lightbox de Vídeos**:
-   - Fotos reais otimizadas em WebP: câmara de pintura moderna, recepção para clientes, equipe técnica, estacionamento amplo com entrada acessível.
-   - Vídeos demonstrativos dos processos de funilaria/repintura com posters estáticos e acionamento sob clique em modal lightbox.
-7. **Avaliações Verificadas do Google**:
-   - Destaque da nota 4,9 / 79 avaliações com botão "Ver todas no Google Maps".
-   - Carrossel acessível com navegação por teclado e botões anterior/próximo contendo os 6 depoimentos reais autorizados (`src/data/testimonials.ts`).
-8. **Condições de Pagamento & Simulador Interativo**:
-   - Destaque: *"3x sem juros no cartão ou 5% OFF no PIX / à vista"* (aceita crédito, débito e aproximação/NFC).
-   - Simulador client-side: visitante insere um valor estimado de referência e visualiza na hora o valor das 3 parcelas e a economia de 5% no PIX, acompanhado do aviso fixo de simulação ilustrativa.
-9. **Parceria APVS Brasil**:
-   - Bloco institucional com a imagem oficial da parceria (`avps-protecao-veicular.jpg`), rotulado como *"Parceria · Ponto de Venda Cadastrado"* e nota *"Serviço oferecido pela APVS Brasil"*, unindo estética e proteção patrimonial.
-10. **Formulário de Orçamento Instantâneo**:
-    - Campos essenciais: Nome, WhatsApp com máscara DDD, Serviço desejado (select), Modelo e ano do veículo, "É pelo seguro?" (Sim/Não).
-    - Checkbox de consentimento com link para a Política de Privacidade (LGPD).
-    - Validação em tempo real acessível (`aria-describedby` e `role="alert"`).
-    - Ação: gera a mensagem pré-formatada codificada em URL e redireciona para o WhatsApp da Garagem Mailasque.
-11. **Perguntas Frequentes (FAQ)**:
-    - Acordeão nativo acessível (`details`/`summary`) respondendo apenas a dúvidas factuais baseadas nos dados fornecidos: seguradoras, formas de pagamento, como enviar fotos do carro e localização.
-12. **Localização & Acessibilidade**:
-    - Endereço completo em texto clicável: *Rod. Raposo Tavares, Km 54,65, Pinheirinho, Mailasqui, São Roque/SP*.
-    - Mapa interativo/incorporado com `loading="lazy"` e botão direto *"Como chegar no Google Maps"*.
-    - Nota de acessibilidade: *"Entrada com acesso para cadeirantes"*.
-13. **Rodapé Completo (Footer)**:
-    - Dados fiscais: Razão/Nome, CNPJ `07.540.332/0001-08`.
-    - Redes sociais: Instagram (`@garagem.mailasque`) e Facebook oficial.
-    - Links legais para Modal de Política de Privacidade e Termos de Uso.
-    - Declaração de controladoria: *"Os dados enviados neste site são de responsabilidade da Garagem Mailasque (controladora)"*.
-    - Crédito discreto: *"Desenvolvido por ēloSites"*.
-14. **Floating WhatsApp Button**:
-    - Botão fixo no canto inferior com tooltip e pulso suave a cada intervalo, acessível via teclado, com mensagem inicial genérica `[site-flutuante]`.
+### A. Fluxo de Navegação do Carrossel
+1. **Entrada na Seção**: O usuário visualiza o cabeçalho conciso (*"Nossa Oficina"* / *"Estrutura real, processos técnicos e equipe dedicada"* / *"Fotos e vídeos reais da oficina, da equipe e do nosso trabalho em Mailasqui."*) com espaçamento otimizado (`py-12 md:py-16`).
+2. **Filtros por Categoria**: Botões compactos (*Todos (10)*, *Fotos (4)*, *Vídeos (6)*) com `text-[11px]` e bordas sutis. Ao alternar, o carrossel retorna suavemente para o início (`scrollLeft = 0`).
+3. **Exploração dos Slides**:
+   - **Scroll-snap Nativo**: Rolagem horizontal suave no desktop e no mobile por gestos de arrasto ou toque.
+   - **Setas Sobrepostas**: Círculos de 44×44px em `#F97316` com ícones pretos nas extremidades, com desativação automática (`disabled`, opacidade reduzida) nos limites de início e fim.
+   - **Fade Lateral Sutil**: Efeito de fade nas bordas esquerda e direita (`from-[#0E0E0E] to-transparent`, `pointer-events-none`) para sinalizar continuidade de conteúdo.
+4. **Slide Especial de Equipe**:
+   - As fotos `equipe1.jpeg` (1254×787) e `equipe2.jpeg` (828×500) aparecem no mesmo card lado a lado, com `gap-2` e mesma altura, sem distorção e com legenda única.
+5. **Abertura do Lightbox**:
+   - Ao clicar ou teclar `Enter`/`Espaço` em qualquer item, abre-se o Lightbox Modal focado na mídia correspondente, com suporte a teclado (`Escape`, `ArrowLeft`, `ArrowRight`, focus trap).
 
-### B. Identidade Visual & Design Tokens
-- **Tema escuro profissional (Oficina de Alta Performance)**:
-  - Fundo principal: `#0E0E0E` (obsidiana profundo).
-  - Superfícies de cards e seções: `#171717` e `#1F1F1F`.
-  - Destaque primário (Laranja mecânico): `#F97316` / `#EA580C` calibrado para casar com o logotipo da Garagem Mailasque.
-  - Texto sobre fundo laranja: **Preto puro `#0A0A0A`** em botões e CTAs para assegurar taxa de contraste WCAG AA > 5:1 (texto branco sobre laranja falha nos padrões de acessibilidade).
-  - Acentos metálicos: Prata e titânio `#C9CDD2` em divisórias e bordas sutis de 1px.
-- **Tipografia**:
-  - Títulos & Display: `Barlow Condensed` / `Oswald` (Google Fonts), transmitindo solidez, potência e precisão mecânica.
-  - Corpo & Dados: `Plus Jakarta Sans`, garantindo máxima legibilidade em telas de alta densidade e dispositivos móveis.
-  - Números e métricas: `tabular-nums` para alinhamento perfeito.
+### B. Indicador de Progresso & Acessibilidade
+- Trilho fino (`h-1`, fundo `#2C2C2C`, barra de preenchimento `#F97316`) posicionado abaixo do carrossel refletindo a proporção de `scrollLeft`.
+- Texto discreto *"Deslize para ver mais"*, que desaparece após a primeira rolagem no desktop.
+- Marcações semânticas completas: `role="region"`, `aria-roledescription="carousel"`, `aria-label="Galeria de fotos e vídeos da Garagem Mailasque"`, slides com `role="group"` e `aria-roledescription="slide"`.
+- Suporte a `prefers-reduced-motion` no scroll suave (`behavior: 'auto'` quando reduzido).
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **WhatsApp como destino único de conversão**: Em negócios automotivos locais, cotações dependem de fotos dos danos no carro (colisões, arranhões). Levar o cliente com dados estruturados para o WhatsApp diminui a fricção a quase zero e permite envio imediato de fotos pelo chat.
-- **Nenhum backend proprietário para envio de dados**: Reduz custos de infraestrutura e riscos de segurança da informação (zero armazenamento de senhas ou dados sensíveis em servidores).
-- **Tráfego Pago preparado sob variáveis de ambiente**: GA4, Google Tag Manager e Meta Pixel só são instanciados se as variáveis `VITE_GA4_ID`, `VITE_GTM_ID` e `VITE_META_PIXEL_ID` estiverem definidas e com consentimento LGPD aceito.
-- **Extração local de assets reais**: Todos os arquivos do zip anexado serão organizados em `/public/assets/images/` e `/public/assets/videos/`.
+- **Decisão 1: CSS Scroll-Snap nativo em vez de biblioteca externa (ex: Swiper, Embla)**
+  - *Abordagem*: Implementação pura em CSS e React com `snap-x snap-mandatory`, botões com `scrollBy` e cálculo de progresso via listener de `scroll`.
+  - *Por que*: Economiza mais de 40 kB de bundle JS, garante performance de 60fps no hardware mobile e evita conflitos com re-renderizações e hidratação.
+- **Decisão 2: Slide composto de equipe no data model (`GalleryTeamItem`)**
+  - *Abordagem*: Criar tipagem discriminada que suporte o item composto da equipe com duas imagens (`photos: [equipe1, equipe2]`) mantendo itens simples (`GalleryPhoto` e `GalleryVideo`) para as demais mídias.
+  - *Por que*: Permite que os filtros de categoria calculem a contagem correta de itens e o Lightbox renderize ambas lado a lado com precisão sem hacky CSS.
+- **Decisão 3: Manutenção da proporção real (`aspect-ratio`) via inline style**
+  - *Abordagem*: Cada slide fixa `h-full` ou `h-[240px] sm:h-[300px] lg:h-[360px]` e calcula a largura através de `aspectRatio: width / height`.
+  - *Por que*: Evita faixas pretas e recortes indesejados nas fotos horizontais (1254×787, 925×583), fotos quadradas (1027×1011) e vídeos verticais (576×768).
 
 ---
 
 ## 4. Technical Architecture & Data Strategy
 
+### Component Hierarchy & Interaction Flow
+
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                              Vite SPA                                  │
-│                                                                        │
-│  ┌───────────────────────┐         ┌────────────────────────────────┐  │
-│  │   index.html (SEO)    │         │  src/data/                     │  │
-│  │  - JSON-LD AutoBody   │         │  - business.ts (Dados Únicos)  │  │
-│  │  - OpenGraph / Meta   │         │  - testimonials.ts (Google)    │  │
-│  │  - Fonts: Barlow/PJS  │         │  - services.ts (4 Serviços)    │  │
-│  └───────────┬───────────┘         └───────────────┬────────────────┘  │
-│              │                                     │                   │
-│              ▼                                     ▼                   │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │                         App.tsx Root                             │  │
-│  │  ┌──────────────┐ ┌──────────────┐ ┌───────────────────────────┐ │  │
-│  │  │ Header & Nav │ │ Hero Section │ │ Services & Insurers Grid  │ │  │
-│  │  └──────────────┘ └──────────────┘ └───────────────────────────┘ │  │
-│  │  ┌──────────────┐ ┌──────────────┐ ┌───────────────────────────┐ │  │
-│  │  │ Real Gallery │ │ Testimonials │ │ Payment Simulator         │ │  │
-│  │  │ (Lightbox)   │ │ Google 4.9   │ │ (3x / 5% OFF)             │ │  │
-│  │  └──────────────┘ └──────────────┘ └───────────────────────────┘ │  │
-│  │  ┌──────────────┐ ┌──────────────┐ ┌───────────────────────────┐ │  │
-│  │  │ APVS Partner │ │ Quote Form   │ │ FAQ Accordion             │ │  │
-│  │  │ Block        │ │ (WhatsApp)   │ │ Location & Footer         │ │  │
-│  │  └──────────────┘ └──────────────┘ └───────────────────────────┘ │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                        │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ Analytics & Privacy: CookieBanner (LGPD) + wa.me link generators │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                      Gallery.tsx                       │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │   Header (py-12 md:py-16, texto enxuto)          │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │   Filter Bar: Todos (10) | Fotos (4) | Vídeos (6)│  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │              Carousel Track Container            │  │
+│  │  ┌──────────┐ ┌──────────────────────────────┐   │  │
+│  │  │ Prev Btn │ │ Flex Track (overflow-x-auto) │   │  │
+│  │  │ (44x44px)│ │                              │   │  │
+│  │  └──────────┘ │  ┌─────────┐ ┌────────────┐  │   │  │
+│  │               │  │ Slide 1 │ │ Slide 2    │  │   │  │
+│  │               │  │ (Câmara)│ │ (Equipe 1+2)│  │   │  │
+│  │               │  └─────────┘ └────────────┘  │   │  │
+│  │               │                              │   │  │
+│  │               │  ┌─────────┐ ┌────────────┐  │   │  │
+│  │               │  │ Slide 3 │ │ Slide 4..  │  │   │  │
+│  │               │  │ (Vídeo) │ │ (Recepção) │  │   │  │
+│  │               │  └─────────┘ └────────────┘  │   │  │
+│  │               └──────────────────────────────┘   │  │
+│  │                                     ┌──────────┐ │  │
+│  │  [Fade Left]           [Fade Right] │ Next Btn │ │  │
+│  │                                     │ (44x44px)│ │  │
+│  │                                     └──────────┘ │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │   Position Indicator: Progress Bar + Hint Text   │  │
+│  └──────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
+                           │ Click / Enter / Space
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                   LightboxModal.tsx                    │
+│  - Suporte a item simples (Imagem/Vídeo)               │
+│  - Suporte a item de Equipe (2 fotos lado a lado)      │
+│  - Controles de navegação, Escape e Focus Trap         │
+└────────────────────────────────────────────────────────┘
 ```
 
-### Estrutura de Arquivos Planejada:
-- `src/data/business.ts`: Fonte única da verdade com todas as informações institucionais, links, telefones, CNPJ, coordenadas e tags de seguro.
-- `src/data/testimonials.ts`: Os 6 depoimentos reais com autorização expressa.
-- `src/data/services.ts`: Detalhes dos 4 serviços com templates de mensagens WhatsApp.
-- `src/components/Header.tsx`, `Hero.tsx`, `Services.tsx`, `Insurers.tsx`, `Workflow.tsx`, `Gallery.tsx`, `LightboxModal.tsx`, `Testimonials.tsx`, `PaymentSimulator.tsx`, `PartnerApvs.tsx`, `QuoteForm.tsx`, `Faq.tsx`, `Location.tsx`, `Footer.tsx`, `FloatingWhatsApp.tsx`, `PrivacyModal.tsx`, `CookieConsent.tsx`.
-- `public/sitemap.xml` e `public/robots.txt`: Gerados com o script Python fornecido.
+### Arquivos e Modificações Previstas
 
----
-
-## 5. Verification Plan
-
-1. **Compilação e Verificação Estática**: Execução de `npm run build` e verificação de tipagem estrita com TypeScript sem warnings.
-2. **Acessibilidade e Contraste**: Verificação de contraste de cores (botões laranja com texto preto, `:focus-visible` ativo, alvos $\ge 44\text{px}$).
-3. **Responsividade Multi-Dispositivo**: Validação em viewports 360px (mobile), 768px (tablet) e 1440px (desktop).
-4. **Fluxos de Conversão**: Teste dos links e formulário com redirecionamento correto para `wa.me` contendo mensagem formatada e codificada com sucesso.
-5. **Auditoria de `TODO_CLIENT`**: Busca por marcadores pendentes para listar com exatidão o que depende de envio futuro pelo cliente.
+1. **`src/data/gallery.ts`**:
+   - Definição da interface `GalleryTeamItem` com `photos: GalleryPhoto[]` (equipe1 e equipe2).
+   - Atualização do tipo `GalleryItem = GalleryPhoto | GalleryVideo | GalleryTeamItem`.
+   - Remoção de qualquer menção a `card-apresentacao`.
+   - Garantia de que os 6 vídeos apontem para seus respectivos posters em `/assets/garagemailasque/posters/`.
+2. **`src/components/Gallery.tsx`**:
+   - Reestruturação do layout com faixa horizontal `overflow-x-auto snap-x snap-mandatory`.
+   - Implementação de botões de navegação lateral (`ChevronLeft`, `ChevronRight`) com verificação de limites em tempo real.
+   - Cálculo dinâmico do indicador de progresso via proporção `scrollLeft / (scrollWidth - clientWidth)`.
+   - Renderização especializada do slide da equipe (composição lado a lado das fotos 1 e 2).
+   - Suporte completo a navegação por teclado (ao focar um slide, rola até o campo visual).
+3. **`src/components/LightboxModal.tsx`**:
+   - Adição de suporte ao `GalleryTeamItem` para renderizar as duas fotos da equipe lado a lado em tela cheia com proporções preservadas.
+4. **`index.html`**:
+   - Verificação e garantia de que `og:image`, `twitter:image` e JSON-LD apontem unicamente para `https://www.garagemmailasque.com.br/assets/garagemailasque/og-image.jpg`.

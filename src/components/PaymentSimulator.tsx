@@ -38,6 +38,9 @@ export const PaymentSimulator: React.FC = () => {
       aria-labelledby="payment-title"
       className="py-20 md:py-28 bg-[#0E0E0E] border-b border-[#2C2C2C] relative"
     >
+      {/* Âncoras alternativas para navegação semântica */}
+      <div id="condicoes-pagamento" className="sr-only" aria-hidden="true" />
+      <div id="pagamento" className="sr-only" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Coluna Informativa das Condições */}

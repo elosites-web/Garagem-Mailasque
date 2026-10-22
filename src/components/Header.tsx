@@ -10,6 +10,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>('inicio');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -17,6 +18,77 @@ export const Header: React.FC<HeaderProps> = () => {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Monitora a seção ativa com base na rolagem
+  useEffect(() => {
+    const sectionIds = [
+      'inicio',
+      'servicos',
+      'seguradoras',
+      'como-funciona',
+      'galeria',
+      'avaliacoes',
+      'condicoes',
+      'parceria-apvs',
+      'orcamento',
+      'faq',
+      'localizacao',
+      'contato',
+    ];
+
+    const handleScrollSpy = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60) {
+        setActiveSection('localizacao');
+        return;
+      }
+
+      const scrollPosition = window.scrollY + 130;
+      let current = 'inicio';
+
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (el) {
+          const top = el.offsetTop;
+          if (scrollPosition >= top) {
+            current = id;
+          }
+        }
+      }
+      setActiveSection(current);
+    };
+
+    window.addEventListener('scroll', handleScrollSpy, { passive: true });
+    handleScrollSpy();
+    return () => window.removeEventListener('scroll', handleScrollSpy);
+  }, []);
+
+  // Suporte a âncora inicial na URL (deep-linking) e evento hashchange
+  useEffect(() => {
+    const handleHashNavigation = () => {
+      const hash = window.location.hash;
+      if (hash) {
+        const targetId = hash.replace('#', '');
+        if (targetId === 'inicio' || targetId === 'hero') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setActiveSection('inicio');
+        } else {
+          const targetEl = document.getElementById(targetId);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth' });
+            setActiveSection(targetId);
+          }
+        }
+      }
+    };
+
+    // Pequeno atraso para aguardar montagem completa do DOM
+    const timer = setTimeout(handleHashNavigation, 150);
+    window.addEventListener('hashchange', handleHashNavigation);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('hashchange', handleHashNavigation);
+    };
   }, []);
 
   // Fecha o menu com a tecla Escape
@@ -40,14 +112,49 @@ export const Header: React.FC<HeaderProps> = () => {
   }, [isMobileMenuOpen]);
 
   const navLinks = [
-    { label: 'Serviços', href: '#servicos' },
-    { label: 'Seguradoras', href: '#seguradoras' },
-    { label: 'Como Funciona', href: '#como-funciona' },
-    { label: 'Galeria', href: '#galeria' },
-    { label: 'Avaliações', href: '#avaliacoes' },
-    { label: 'Condições', href: '#condicoes' },
-    { label: 'Localização', href: '#localizacao' },
+    { id: 'servicos', label: 'Serviços', href: '#servicos' },
+    { id: 'seguradoras', label: 'Seguradoras', href: '#seguradoras' },
+    { id: 'como-funciona', label: 'Como Funciona', href: '#como-funciona' },
+    { id: 'galeria', label: 'Galeria', href: '#galeria' },
+    { id: 'avaliacoes', label: 'Avaliações', href: '#avaliacoes' },
+    { id: 'condicoes', label: 'Condições', href: '#condicoes' },
+    { id: 'localizacao', label: 'Localização', href: '#localizacao' },
   ];
+
+  const mobileNavLinks = [
+    { id: 'inicio', label: 'Início', href: '#inicio' },
+    { id: 'servicos', label: 'Serviços Especializados', href: '#servicos' },
+    { id: 'seguradoras', label: 'Seguradoras & Sinistro', href: '#seguradoras' },
+    { id: 'como-funciona', label: 'Como Funciona', href: '#como-funciona' },
+    { id: 'galeria', label: 'Galeria da Oficina', href: '#galeria' },
+    { id: 'avaliacoes', label: 'Avaliações Google (4,9)', href: '#avaliacoes' },
+    { id: 'condicoes', label: 'Condições de Pagamento', href: '#condicoes' },
+    { id: 'parceria-apvs', label: 'Parceria APVS Brasil', href: '#parceria-apvs' },
+    { id: 'orcamento', label: 'Pedir Orçamento', href: '#orcamento' },
+    { id: 'faq', label: 'Perguntas Frequentes', href: '#faq' },
+    { id: 'localizacao', label: 'Onde Estamos (Mapa)', href: '#localizacao' },
+    { id: 'contato', label: 'Contato & Informações', href: '#contato' },
+  ];
+
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith('#')) {
+      e.preventDefault();
+      const targetId = href.replace('#', '');
+      if (targetId === '' || targetId === 'inicio' || targetId === 'hero') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.history.pushState(null, '', window.location.pathname);
+        setActiveSection('inicio');
+      } else {
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth' });
+          window.history.pushState(null, '', href);
+          setActiveSection(targetId);
+        }
+      }
+      setIsMobileMenuOpen(false);
+    }
+  };
 
   const handleWhatsAppClick = () => {
     trackEvent('whatsapp_click', { section: 'header' });
@@ -58,6 +165,7 @@ export const Header: React.FC<HeaderProps> = () => {
       {/* Link de acessibilidade: Pular para o conteúdo principal */}
       <a
         href="#conteudo-principal"
+        onClick={(e) => handleAnchorClick(e, '#conteudo-principal')}
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#F97316] focus:text-[#0A0A0A] focus:font-bold focus:rounded-md focus:shadow-lg"
       >
         Pular para o conteúdo principal
@@ -73,9 +181,10 @@ export const Header: React.FC<HeaderProps> = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-8">
           {/* Zona 1: Logo Wordmark (Elemento único, sem tags adicionais) */}
           <a
-            href="#"
+            href="#inicio"
+            onClick={(e) => handleAnchorClick(e, '#inicio')}
             className="flex items-center gap-3 shrink-0 focus-visible:outline-2 focus-visible:outline-[#F97316] rounded-md"
-            aria-label="Garagem Mailasque - Página inicial"
+            aria-label="Garagem Mailasque - Ir para o topo"
           >
             <img
               src="/assets/garagemailasque/logo-garagem-mailasque.png"
@@ -86,20 +195,35 @@ export const Header: React.FC<HeaderProps> = () => {
             />
           </a>
 
-          {/* Zona 2: Links de navegação em linha única */}
+          {/* Zona 2: Links de navegação em linha única com indicação ativa */}
           <nav
-            className="hidden lg:flex items-center gap-6 text-sm font-medium text-[#A3A3A3]"
+            className="hidden lg:flex items-center gap-6 text-sm font-medium"
             aria-label="Navegação principal"
           >
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="whitespace-nowrap shrink-0 hover:text-[#F5F5F5] transition-colors duration-150 relative py-1 focus-visible:outline-2 focus-visible:outline-[#F97316] rounded-sm"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = activeSection === link.id;
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={(e) => handleAnchorClick(e, link.href)}
+                  aria-current={isActive ? 'location' : undefined}
+                  className={`whitespace-nowrap shrink-0 transition-colors duration-150 relative py-1 focus-visible:outline-2 focus-visible:outline-[#F97316] rounded-sm ${
+                    isActive
+                      ? 'text-[#F97316] font-semibold'
+                      : 'text-[#A3A3A3] hover:text-[#F5F5F5]'
+                  }`}
+                >
+                  {link.label}
+                  {isActive && (
+                    <span
+                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#F97316] rounded-full"
+                      aria-hidden="true"
+                    />
+                  )}
+                </a>
+              );
+            })}
           </nav>
 
           {/* Zona 3: Ação primária única */}
@@ -174,16 +298,27 @@ export const Header: React.FC<HeaderProps> = () => {
               </div>
 
               <nav className="mt-6 flex flex-col gap-2" aria-label="Navegação móvel">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="px-4 py-3 rounded-lg text-base font-medium text-[#F5F5F5] hover:bg-[#222222] hover:text-[#F97316] transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {mobileNavLinks.map((link) => {
+                  const isActive = activeSection === link.id;
+                  return (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      onClick={(e) => handleAnchorClick(e, link.href)}
+                      aria-current={isActive ? 'location' : undefined}
+                      className={`px-4 py-3 rounded-lg text-base transition-colors flex items-center justify-between ${
+                        isActive
+                          ? 'bg-[#222222] text-[#F97316] font-bold border-l-4 border-[#F97316]'
+                          : 'text-[#F5F5F5] hover:bg-[#222222] hover:text-[#F97316] font-medium'
+                      }`}
+                    >
+                      <span>{link.label}</span>
+                      {isActive && (
+                        <span className="w-2 h-2 rounded-full bg-[#F97316]" aria-hidden="true" />
+                      )}
+                    </a>
+                  );
+                })}
               </nav>
             </div>
 

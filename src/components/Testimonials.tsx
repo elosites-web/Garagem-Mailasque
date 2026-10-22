@@ -25,6 +25,8 @@ export const Testimonials: React.FC = () => {
       aria-labelledby="testimonials-title"
       className="py-20 md:py-28 bg-[#121212] border-b border-[#2C2C2C] relative"
     >
+      {/* Âncora alternativa para #depoimentos */}
+      <div id="depoimentos" className="sr-only" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Cabeçalho com Prova Social Google 4,9 */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">

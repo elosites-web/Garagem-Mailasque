@@ -14,7 +14,58 @@ declare global {
 
 export type AnalyticsConsent = 'granted' | 'denied' | 'pending';
 
+export interface CookiePreferences {
+  necessary: boolean;
+  analytics: boolean;
+  marketing: boolean;
+  updatedAt?: string;
+}
+
 const CONSENT_STORAGE_KEY = 'gm_cookie_consent_v1';
+const PREFERENCES_STORAGE_KEY = 'gm_cookie_preferences_v2';
+
+export function getCookiePreferences(): CookiePreferences {
+  try {
+    const raw = localStorage.getItem(PREFERENCES_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        necessary: true,
+        analytics: Boolean(parsed.analytics),
+        marketing: Boolean(parsed.marketing),
+        updatedAt: parsed.updatedAt,
+      };
+    }
+  } catch {
+    // fallback
+  }
+
+  // Compatibilidade com v1 se já houver consentimento simples
+  const legacy = getStoredConsent();
+  if (legacy === 'granted') {
+    return { necessary: true, analytics: true, marketing: true };
+  } else if (legacy === 'denied') {
+    return { necessary: true, analytics: false, marketing: false };
+  }
+
+  return { necessary: true, analytics: false, marketing: false };
+}
+
+export function saveCookiePreferences(prefs: { analytics: boolean; marketing: boolean }): void {
+  const payload: CookiePreferences = {
+    necessary: true,
+    analytics: prefs.analytics,
+    marketing: prefs.marketing,
+    updatedAt: new Date().toISOString(),
+  };
+
+  try {
+    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(payload));
+    setStoredConsent(prefs.analytics || prefs.marketing ? 'granted' : 'denied');
+  } catch {
+    // ignorar erro de storage restrito
+  }
+}
 
 export function getStoredConsent(): AnalyticsConsent {
   try {
@@ -45,12 +96,13 @@ export function initAnalyticsIfConsented(): void {
   const consent = getStoredConsent();
   if (consent !== 'granted') return;
 
+  const prefs = getCookiePreferences();
   const ga4Id = import.meta.env.VITE_GA4_ID;
   const gtmId = import.meta.env.VITE_GTM_ID;
   const pixelId = import.meta.env.VITE_META_PIXEL_ID;
 
-  // Inicializa GA4 se configurado
-  if (ga4Id && !document.getElementById('ga4-script')) {
+  // Inicializa GA4 se configurado e com consentimento analítico
+  if (prefs.analytics && ga4Id && !document.getElementById('ga4-script')) {
     const script = document.createElement('script');
     script.id = 'ga4-script';
     script.async = true;
@@ -66,8 +118,8 @@ export function initAnalyticsIfConsented(): void {
     window.gtag('config', ga4Id);
   }
 
-  // Inicializa GTM se configurado
-  if (gtmId && !document.getElementById('gtm-script')) {
+  // Inicializa GTM se configurado e com consentimento analítico
+  if (prefs.analytics && gtmId && !document.getElementById('gtm-script')) {
     const script = document.createElement('script');
     script.id = 'gtm-script';
     script.async = true;
@@ -79,8 +131,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     document.head.appendChild(script);
   }
 
-  // Inicializa Meta Pixel se configurado
-  if (pixelId && !document.getElementById('pixel-script')) {
+  // Inicializa Meta Pixel se configurado e com consentimento de marketing
+  if (prefs.marketing && pixelId && !document.getElementById('pixel-script')) {
     const script = document.createElement('script');
     script.id = 'pixel-script';
     script.innerHTML = `!function(f,b,e,v,n,t,s)

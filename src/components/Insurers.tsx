@@ -14,6 +14,8 @@ export const Insurers: React.FC = () => {
       aria-labelledby="insurers-title"
       className="py-16 md:py-20 bg-[#0E0E0E] border-b border-[#2C2C2C] relative overflow-hidden"
     >
+      {/* Âncora alternativa para #sinistro */}
+      <div id="sinistro" className="sr-only" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="rounded-3xl bg-gradient-to-br from-[#171717] to-[#121212] border border-[#2C2C2C] p-8 md:p-12 shadow-2xl">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">

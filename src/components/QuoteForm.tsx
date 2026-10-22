@@ -123,6 +123,8 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
       aria-labelledby="quote-form-title"
       className="py-20 md:py-28 bg-[#171717] border-b border-[#2C2C2C] relative"
     >
+      {/* Âncora alternativa para #cotacao */}
+      <div id="cotacao" className="sr-only" aria-hidden="true" />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <span className="text-xs font-bold uppercase tracking-widest text-[#F97316] mb-3 block">
