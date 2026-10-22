@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--fonte-primaria);
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+    overflow-x: hidden;
+  }
+
+  /* Outline visível para acessibilidade WCAG 2.1 AA */
+  :focus-visible {
+    outline: 2px solid var(--cor-primaria);
+    outline-offset: 2px;
+  }
+
+  /* Respeito a prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+.font-display {
+  font-family: var(--fonte-display);
+}
+
+.font-body {
+  font-family: var(--fonte-primaria);
+}
+
+/* Efeito de borda metálica sutil */
+.border-silver-subtle {
+  border-color: rgba(201, 205, 210, 0.18);
+}

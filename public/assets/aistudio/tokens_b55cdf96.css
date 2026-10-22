@@ -1,0 +1,56 @@
+/* Design tokens base — sites institucionais para profissionais liberais.
+   Copie para src/styles/tokens.css (ou equivalente) e ajuste as cores ao segmento.
+   Cores de exemplo: ajuste --cor-primaria/--cor-acento por segmento (ver SKILL.md seção 9). */
+
+:root {
+  /* Cores — exemplo: barbearia (tons escuros). Troque por segmento. */
+  --cor-fundo: #121212;
+  --cor-superficie: #1E1E1E;
+  --cor-texto: #F5F5F5;
+  --cor-texto-suave: #B8B8B8;
+  --cor-primaria: #D4A24E;      /* dourado clássico */
+  --cor-acento: #B9822E;
+  --cor-sucesso: #2E7D32;
+  --cor-erro: #C62828;
+
+  /* Tipografia */
+  --fonte-primaria: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fonte-display: Georgia, "Times New Roman", serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+  --fs-display: 3rem;
+
+  /* Espaçamento (base 4px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Raios e sombras */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.3);
+
+  /* Motion */
+  --dur-fast: 150ms;
+  --dur-med: 300ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Acessibilidade */
+  --focus-ring: 2px solid var(--cor-primaria);
+}
+
+/* Dark mode opcional: sobrescreva os tokens, nunca inverta cores diretamente.
+@media (prefers-color-scheme: dark) { ... } */

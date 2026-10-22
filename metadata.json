@@ -1,0 +1,6 @@
+{
+  "name": "Garagem Mailasque - Funilaria e Pintura Automotiva",
+  "description": "Oficina especializada em funilaria e pintura automotiva em Mailasqui e São Roque/SP. Acabamento impecável, todas as seguradoras e orçamento no WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
