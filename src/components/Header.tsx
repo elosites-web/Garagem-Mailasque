@@ -174,10 +174,8 @@ export const Header: React.FC<HeaderProps> = () => {
       </a>
 
       <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-colors duration-200 ${
-          isScrolled
-            ? 'bg-[#0E0E0E]/95 backdrop-blur-md border-b border-[#2C2C2C] shadow-lg'
-            : 'bg-[#0E0E0E]/80 backdrop-blur-sm border-b border-transparent'
+        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 relative ${
+          isScrolled ? 'header-glass-gradient-scrolled' : 'header-glass-gradient'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-8">
@@ -185,13 +183,13 @@ export const Header: React.FC<HeaderProps> = () => {
           <a
             href="#inicio"
             onClick={(e) => handleAnchorClick(e, '#inicio')}
-            className="flex items-center gap-3 shrink-0 focus-visible:outline-2 focus-visible:outline-[#F97316] rounded-md"
+            className="flex items-center gap-3 shrink-0 focus-visible:outline-2 focus-visible:outline-[#F97316] rounded-md transition-transform hover:scale-[1.02]"
             aria-label="Garagem Mailasque - Ir para o topo"
           >
             <img
               src="/assets/garagemailasque/logo-garagem-mailasque.png"
               alt="Logotipo Garagem Mailasque"
-              className="h-12 w-auto object-contain"
+              className="h-12 w-auto object-contain drop-shadow"
               width={160}
               height={48}
             />
@@ -212,14 +210,14 @@ export const Header: React.FC<HeaderProps> = () => {
                   aria-current={isActive ? 'location' : undefined}
                   className={`whitespace-nowrap shrink-0 transition-colors duration-150 relative py-1 focus-visible:outline-2 focus-visible:outline-[#F97316] rounded-sm ${
                     isActive
-                      ? 'text-[#F97316] font-semibold'
-                      : 'text-[#A3A3A3] hover:text-[#F5F5F5]'
+                      ? 'text-[#F97316] font-bold drop-shadow-sm'
+                      : 'text-[#E5E5E5] hover:text-white font-medium drop-shadow-sm'
                   }`}
                 >
                   {link.label}
                   {isActive && (
                     <span
-                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#F97316] rounded-full"
+                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-[#F97316] to-[#CBD5E1] rounded-full shadow-[0_0_8px_rgba(249,115,22,0.6)]"
                       aria-hidden="true"
                     />
                   )}
@@ -247,7 +245,7 @@ export const Header: React.FC<HeaderProps> = () => {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2.5 rounded-lg text-[#F5F5F5] hover:bg-[#1F1F1F] transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+              className="p-2.5 rounded-lg text-[#F5F5F5] hover:bg-white/10 transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-menu-drawer"
               aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu de navegação'}
@@ -260,6 +258,12 @@ export const Header: React.FC<HeaderProps> = () => {
             </button>
           </div>
         </div>
+
+        {/* Linha de borda inferior em degradê laranja e prateado */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#F97316] via-[#CBD5E1] to-[#E2E8F0] opacity-75 pointer-events-none"
+          aria-hidden="true"
+        />
       </header>
 
       {/* Drawer Mobile Acessível */}

@@ -18,7 +18,7 @@ export const PartnerApvs: React.FC = () => {
       {/* Âncora alternativa para #apvs */}
       <div id="apvs" className="sr-only" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-[#171717] border border-[#2C2C2C] p-6 sm:p-10 shadow-xl overflow-hidden">
+        <div className="rounded-3xl bg-[#171717] border border-[#2C2C2C] p-6 sm:p-10 shadow-xl overflow-hidden card-hover-elevation">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             {/* Imagem Oficial da Parceria */}
             <div className="md:col-span-5 rounded-2xl overflow-hidden border border-[#2C2C2C] bg-[#0E0E0E]">
@@ -35,11 +35,12 @@ export const PartnerApvs: React.FC = () => {
 
             {/* Conteúdo Institucional Discreto */}
             <div className="md:col-span-7 flex flex-col justify-center">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#A3A3A3] bg-[#222222] px-2.5 py-1 rounded-md border border-[#2C2C2C]">
+              <div className="flex items-center gap-2 mb-3 text-xs">
+                <span className="font-bold uppercase tracking-wider text-[#A3A3A3]">
                   Parceria
                 </span>
-                <span className="text-xs text-[#F97316] font-semibold">
+                <span aria-hidden="true" className="text-[#525252]">·</span>
+                <span className="text-[#F97316] font-semibold">
                   {businessData.partnershipApvs.badge}
                 </span>
               </div>

@@ -1,8 +1,9 @@
-/* Design tokens - Garagem Mailasque
-   Cores, tipografia e espaçamentos padronizados para alta conversão e acessibilidade. */
+/* Design tokens — Garagem Mailasque
+   Base centralizada de cores, tipografia modular, espaçamento e motion.
+   Atende aos padrões de UI/UX avançado para sites institucionais. */
 
 :root {
-  /* Cores fundamentais */
+  /* Cores — Identidade automotiva da oficina (grafite escuro e laranja vibrante) */
   --cor-fundo: #0E0E0E;
   --cor-superficie: #171717;
   --cor-superficie-elevada: #202020;
@@ -17,8 +18,9 @@
   /* Laranja da Oficina (Acento & Ação) */
   --cor-primaria: #F97316;
   --cor-primaria-hover: #EA580C;
-  --cor-primaria-texto: #0A0A0A; /* Contraste AA garantido (> 5:1 sobre laranja) */
+  --cor-primaria-texto: #0A0A0A; /* Contraste estrito > 5:1 sobre laranja */
   --cor-primaria-suave: rgba(249, 115, 22, 0.12);
+  --cor-acento: #EA580C;
 
   /* Acentos metálicos (Prata / Alumínio escovado) */
   --cor-prata: #C9CDD2;
@@ -31,13 +33,20 @@
   --cor-aviso: #F59E0B;
   --cor-whatsapp: #25D366;
   --cor-whatsapp-hover: #20BA5A;
-  --cor-whatsapp-texto: #0E2C1B; /* Contraste estrito WCAG AAA (7.6:1) para texto pequeno e ícone sobre #25D366 */
+  --cor-whatsapp-texto: #0E2C1B; /* WCAG AAA (7.6:1) */
 
-  /* Tipografia */
+  /* Tipografia modular */
   --fonte-primaria: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --fonte-display: 'Barlow Condensed', 'Oswald', sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+  --fs-display: 3rem;
 
-  /* Escala de espaçamento (base 4px) */
+  /* Espaçamento (base 4px) */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -53,17 +62,18 @@
   /* Raios de borda */
   --radius-sm: 4px;
   --radius-md: 8px;
-  --radius-lg: 14px;
+  --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-pill: 9999px;
 
-  /* Sombras */
+  /* Sombras sutis e multicamadas */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --shadow-card-hover: 0 16px 36px -4px rgba(0, 0, 0, 0.65), 0 0 20px rgba(249, 115, 22, 0.12);
   --shadow-laranja: 0 8px 24px rgba(249, 115, 22, 0.25);
 
-  /* Motion */
+  /* Motion padronizado */
   --dur-fast: 150ms;
   --dur-med: 300ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);

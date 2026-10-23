@@ -59,7 +59,7 @@ export const Workflow: React.FC = () => {
             return (
               <div
                 key={step.number}
-                className="relative rounded-2xl bg-[#1F1F1F] border border-[#2C2C2C] p-6 flex flex-col justify-between shadow-md"
+                className="relative rounded-2xl bg-[#1F1F1F] border border-[#2C2C2C] p-6 flex flex-col justify-between shadow-md card-hover-elevation"
               >
                 <div>
                   <div className="flex items-center justify-between mb-6">

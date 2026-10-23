@@ -191,6 +191,67 @@
               filter 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
+/* Card hover elevation padronizada (Micro-interação suave e elegante conforme UI/UX avançado) */
+.card-hover-elevation {
+  transition: transform var(--dur-med) var(--ease-out),
+              box-shadow var(--dur-med) var(--ease-out),
+              border-color var(--dur-med) var(--ease-out);
+}
+
+.card-hover-elevation:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: rgba(249, 115, 22, 0.35);
+}
+
+/* Transição de revelação suave (scroll-reveal via IntersectionObserver) */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out);
+  will-change: opacity, transform;
+}
+
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Faixa do cabeçalho em vidro transparente com degradê laranja e prateado */
+.header-glass-gradient {
+  background: linear-gradient(
+    105deg,
+    rgba(249, 115, 22, 0.30) 0%,
+    rgba(234, 88, 12, 0.16) 28%,
+    rgba(163, 177, 198, 0.18) 65%,
+    rgba(226, 232, 240, 0.32) 100%
+  ), rgba(12, 12, 12, 0.68);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.38),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.25),
+              inset 0 -1px 0 0 rgba(201, 205, 210, 0.2);
+}
+
+.header-glass-gradient-scrolled {
+  background: linear-gradient(
+    105deg,
+    rgba(249, 115, 22, 0.38) 0%,
+    rgba(234, 88, 12, 0.20) 28%,
+    rgba(163, 177, 198, 0.22) 65%,
+    rgba(226, 232, 240, 0.38) 100%
+  ), rgba(10, 10, 10, 0.86);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.58),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
+              inset 0 -1px 0 0 rgba(226, 232, 240, 0.28);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-whatsapp-gradient-aura,
   .animate-badge-bounce,
@@ -200,4 +261,15 @@
     animation: none !important;
     transform: none !important;
   }
+
+  .card-hover-elevation:hover {
+    transform: none !important;
+  }
+
+  .reveal-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
+

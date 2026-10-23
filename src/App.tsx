@@ -81,6 +81,27 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    // Efeito de scroll-reveal suave com IntersectionObserver para elevação de seções
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { rootMargin: '0px 0px -40px 0px', threshold: 0.08 }
+    );
+
+    const elements = document.querySelectorAll('.reveal-on-scroll');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0E0E0E] text-[#F5F5F5] flex flex-col font-body selection:bg-[#F97316] selection:text-[#0A0A0A]">
       {/* Barra de progresso de leitura fixa no topo da página */}
@@ -95,37 +116,59 @@ export default function App() {
         <Hero />
 
         {/* 3. Serviços (4 cards especializados) */}
-        <Services />
+        <div className="reveal-on-scroll">
+          <Services />
+        </div>
 
         {/* 4. Comparador Antes e Depois (Slider Interativo) */}
-        <BeforeAfterSlider />
+        <div className="reveal-on-scroll">
+          <BeforeAfterSlider />
+        </div>
 
         {/* 5. Seguradoras (Seu carro, sua escolha de oficina) */}
-        <Insurers />
+        <div className="reveal-on-scroll">
+          <Insurers />
+        </div>
 
         {/* 6. Diferenciais / Como Funciona */}
-        <Workflow />
+        <div className="reveal-on-scroll">
+          <Workflow />
+        </div>
 
         {/* 7. Galeria da Oficina (Fotos & Vídeos Reais com Lightbox) */}
-        <Gallery />
+        <div className="reveal-on-scroll">
+          <Gallery />
+        </div>
 
         {/* 8. Avaliações (Nota 4,9 no Google / 79 avaliações) */}
-        <Testimonials />
+        <div className="reveal-on-scroll">
+          <Testimonials />
+        </div>
 
         {/* 9. Condições de Pagamento & Simulador Interativo */}
-        <PaymentSimulator />
+        <div className="reveal-on-scroll">
+          <PaymentSimulator />
+        </div>
 
         {/* 10. Parceria APVS Brasil */}
-        <PartnerApvs />
+        <div className="reveal-on-scroll">
+          <PartnerApvs />
+        </div>
 
         {/* 11. Formulário de Orçamento com Validação */}
-        <QuoteForm onOpenPrivacyModal={handleOpenPrivacy} />
+        <div className="reveal-on-scroll">
+          <QuoteForm onOpenPrivacyModal={handleOpenPrivacy} />
+        </div>
 
         {/* 12. FAQ (Perguntas Frequentes) */}
-        <Faq />
+        <div className="reveal-on-scroll">
+          <Faq />
+        </div>
 
         {/* 13. Localização, Acessibilidade e Mapa */}
-        <Location />
+        <div className="reveal-on-scroll">
+          <Location />
+        </div>
       </main>
 
       {/* 14. Rodapé Completo */}

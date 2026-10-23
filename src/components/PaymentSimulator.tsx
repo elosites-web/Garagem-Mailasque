@@ -62,7 +62,7 @@ export const PaymentSimulator: React.FC = () => {
 
             {/* Badges de Meios de Pagamento */}
             <div className="space-y-4 mb-8">
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-[#171717] border border-[#2C2C2C]">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-[#171717] border border-[#2C2C2C] card-hover-elevation">
                 <CreditCard className="w-5 h-5 text-[#F97316] shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <h3 className="text-sm font-bold text-[#F5F5F5]">Cartão de Crédito e Débito</h3>
@@ -72,7 +72,7 @@ export const PaymentSimulator: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-[#171717] border border-[#2C2C2C]">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-[#171717] border border-[#2C2C2C] card-hover-elevation">
                 <QrCode className="w-5 h-5 text-[#22C55E] shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <h3 className="text-sm font-bold text-[#F5F5F5]">PIX ou À Vista</h3>
@@ -82,7 +82,7 @@ export const PaymentSimulator: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-[#171717] border border-[#2C2C2C]">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-[#171717] border border-[#2C2C2C] card-hover-elevation">
                 <Smartphone className="w-5 h-5 text-[#C9CDD2] shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <h3 className="text-sm font-bold text-[#F5F5F5]">Aproximação (NFC)</h3>
@@ -131,7 +131,7 @@ export const PaymentSimulator: React.FC = () => {
               {/* Resultados da Simulação */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Opção 1: Parcelado em 3x */}
-                <div className="p-4 rounded-2xl bg-[#1F1F1F] border border-[#2C2C2C]">
+                <div className="p-4 rounded-2xl bg-[#1F1F1F] border border-[#2C2C2C] card-hover-elevation">
                   <span className="text-xs font-bold text-[#A3A3A3] uppercase tracking-wider block mb-1">
                     No Cartão (3x sem juros)
                   </span>
@@ -144,7 +144,7 @@ export const PaymentSimulator: React.FC = () => {
                 </div>
 
                 {/* Opção 2: PIX com 5% de desconto */}
-                <div className="p-4 rounded-2xl bg-[#1F1F1F] border border-[#22C55E]/30 relative overflow-hidden">
+                <div className="p-4 rounded-2xl bg-[#1F1F1F] border border-[#22C55E]/30 relative overflow-hidden card-hover-elevation">
                   <div className="absolute top-2 right-2">
                     <span className="text-[10px] font-bold text-[#22C55E] uppercase tracking-wider bg-[#22C55E]/10 px-2 py-0.5 rounded-md">
                       Economize 5%

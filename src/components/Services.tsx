@@ -36,7 +36,7 @@ export const Services: React.FC = () => {
           </span>
           <h2
             id="services-title"
-            className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold uppercase text-[#F5F5F5] tracking-tight mb-4"
+            className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold uppercase text-[#F5F5F5] tracking-tight mb-4 text-balance"
           >
             Serviços automotivos de precisão e acabamento impecável
           </h2>
@@ -61,7 +61,7 @@ export const Services: React.FC = () => {
                   ease: [0.21, 0.47, 0.32, 0.98],
                 }}
                 whileHover={shouldReduceMotion ? undefined : { y: -4 }}
-                className="group relative rounded-2xl bg-[#171717] border border-[#2C2C2C] p-6 flex flex-col justify-between hover:border-[#F97316]/50 hover:bg-[#1C1C1C] transition-colors duration-200 shadow-lg"
+                className="group relative rounded-2xl bg-[#171717] border border-[#2C2C2C] p-6 flex flex-col justify-between hover:border-[#F97316]/50 hover:bg-[#1C1C1C] transition-colors duration-200 shadow-lg card-hover-elevation"
               >
                 <div>
                   {/* Cabeçalho do Card: Ícone e Índice Editorial */}

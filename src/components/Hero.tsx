@@ -155,8 +155,8 @@ export const Hero: React.FC = () => {
             </div>
 
             {/* Selo Flutuante Discreto de Ponto APVS */}
-            <div className="hidden sm:flex absolute -top-4 -right-4 bg-[#1F1F1F] border border-[#2C2C2C] text-[#F5F5F5] rounded-xl px-4 py-2.5 shadow-xl items-center gap-2.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#F97316]" aria-hidden="true" />
+            <div className="hidden sm:flex absolute -top-4 -right-4 bg-[#1F1F1F] border border-[#2C2C2C] text-[#F5F5F5] rounded-xl px-4 py-2.5 shadow-xl items-center gap-2.5 card-hover-elevation">
+              <Shield className="w-4 h-4 text-[#F97316] shrink-0" aria-hidden="true" />
               <div className="text-left">
                 <div className="text-[10px] font-bold text-[#A3A3A3] uppercase tracking-wider">Parceria</div>
                 <div className="text-xs font-bold text-[#F5F5F5]">Ponto de Venda APVS Brasil</div>
