@@ -189,7 +189,7 @@ export const Header: React.FC<HeaderProps> = () => {
       </a>
 
       <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 relative ${
+        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
           isScrolled ? 'header-glass-gradient-scrolled' : 'header-glass-gradient'
         }`}
       >
