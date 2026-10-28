@@ -6,6 +6,7 @@ import {
   setStoredConsent,
   saveCookiePreferences,
   initAnalyticsIfConsented,
+  setupDefaultConsentMode,
 } from '../utils/analytics';
 
 interface CookieConsentProps {
@@ -22,10 +23,8 @@ export const CookieConsent: React.FC<CookieConsentProps> = ({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Só exibe se houver IDs de analítica configurados via variáveis de ambiente
-    if (!hasAnalyticsConfigured()) {
-      return;
-    }
+    // Registra estado padrão de Consent Mode v2 antes do disparo de quaisquer tags
+    setupDefaultConsentMode();
 
     const consent = getStoredConsent();
     if (consent === 'pending') {

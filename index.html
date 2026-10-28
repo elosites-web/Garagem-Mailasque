@@ -25,6 +25,10 @@
       content="Oficina especializada em funilaria, pintura automotiva e martelinho em Mailasqui e São Roque/SP. Acabamento impecável, todas as seguradoras e orçamento rápido no WhatsApp."
     />
     <meta property="og:image" content="https://www.garagemmailasque.com.br/assets/garagemailasque/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:alt" content="Garagem Mailasque - Funilaria e Pintura Automotiva em São Roque e Mailasqui" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -34,6 +38,18 @@
       content="Oficina especializada em funilaria, pintura automotiva e martelinho em Mailasqui e São Roque/SP. Acabamento impecável e orçamento no WhatsApp."
     />
     <meta name="twitter:image" content="https://www.garagemmailasque.com.br/assets/garagemailasque/og-image.jpg" />
+
+    <!-- Bing Webmaster Tools: verificação via meta tag ou arquivo BingSiteAuth.xml -->
+    <!-- Para ativar quando a conta for criada, descomente a linha abaixo e insira o código fornecido pelo Bing: -->
+    <!-- <meta name="msvalidate.01" content="" /> -->
+
+    <!-- Preload do recurso LCP (Largest Contentful Paint) prioritário da página -->
+    <link
+      rel="preload"
+      as="image"
+      href="/assets/garagemailasque/camara-de-pintura.jpeg"
+      fetchpriority="high"
+    />
 
     <!-- Google Fonts: Barlow Condensed (Display) & Plus Jakarta Sans (Corpo) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -48,6 +64,7 @@
       {
         "@context": "https://schema.org",
         "@type": "AutoBodyShop",
+        "@id": "https://www.garagemmailasque.com.br/#autobody-shop",
         "name": "Garagem Mailasque",
         "image": "https://www.garagemmailasque.com.br/assets/garagemailasque/og-image.jpg",
         "logo": "https://www.garagemmailasque.com.br/assets/garagemailasque/logo-garagem-mailasque.png",
@@ -72,7 +89,55 @@
         "aggregateRating": {
           "@type": "AggregateRating",
           "ratingValue": "4.9",
-          "reviewCount": "79"
+          "reviewCount": "79",
+          "bestRating": "5",
+          "worstRating": "1"
+        },
+        "areaServed": [
+          { "@type": "City", "name": "São Roque" },
+          { "@type": "City", "name": "Mailasqui" },
+          { "@type": "City", "name": "Mairinque" },
+          { "@type": "City", "name": "Alumínio" },
+          { "@type": "City", "name": "Sorocaba" },
+          { "@type": "City", "name": "Ibiúna" }
+        ],
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "Especialidades Automotivas",
+          "itemListElement": [
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Funilaria",
+                "description": "Reparação e alinhamento milimétrico de lataria e peças automotivas."
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Pintura",
+                "description": "Pintura automotiva em câmara pressurizada própria com controle térmico e pureza do ar."
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Martelinho",
+                "description": "Desamassamento técnico sem necessidade de repintura, preservando a originalidade."
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Revisão",
+                "description": "Revisão preventiva, ajustes e inspeção minuciosa pré-entrega."
+              }
+            }
+          ]
         },
         "openingHoursSpecification": [
           {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Calculator, CreditCard, QrCode, Smartphone, Sparkles } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
@@ -6,6 +6,7 @@ import { trackEvent } from '../utils/analytics';
 
 export const PaymentSimulator: React.FC = () => {
   const [inputValue, setInputValue] = useState<string>('1200');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Converte input limpo para número
   const numericValue = Math.max(0, parseFloat(inputValue.replace(/\D/g, '')) / 100 || 0);
@@ -30,7 +31,14 @@ export const PaymentSimulator: React.FC = () => {
     }
     const val = (parseInt(raw, 10) / 100).toFixed(2);
     setInputValue(val);
-    trackEvent('simulator_use', { reference_value: val });
+
+    // Debounce de 600ms para evitar disparo excessivo a cada dígito digitado
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      trackEvent('simulator_use', { reference_value: val });
+    }, 600);
   };
 
   return (

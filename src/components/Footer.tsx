@@ -1,8 +1,8 @@
 import React from 'react';
-import { Instagram, Facebook, MapPin, Star, ArrowUp, Clock } from 'lucide-react';
+import { Instagram, Facebook, MapPin, Star, ArrowUp, Clock, Phone } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackEvent, trackPhoneConversion } from '../utils/analytics';
 
 interface FooterProps {
   onOpenPrivacyModal?: () => void;
@@ -119,6 +119,15 @@ export const Footer: React.FC<FooterProps> = ({
               >
                 <WhatsAppIcon className="w-4 h-4 text-[#25D366]" aria-hidden="true" />
                 <span>WhatsApp: {businessData.phone}</span>
+              </a>
+
+              <a
+                href={`tel:+${businessData.phoneRaw}`}
+                onClick={() => trackPhoneConversion('footer')}
+                className="flex items-center gap-2 hover:text-[#F97316] transition-colors"
+              >
+                <Phone className="w-4 h-4 text-[#F97316]" aria-hidden="true" />
+                <span>Telefone: {businessData.phone}</span>
               </a>
 
               <a

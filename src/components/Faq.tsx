@@ -47,6 +47,30 @@ export const Faq: React.FC = () => {
             </details>
           ))}
         </div>
+
+        {/* Bloco de Ajuda Direta com links internos */}
+        <div className="mt-10 p-6 rounded-2xl bg-[#171717] border border-[#2C2C2C] text-center">
+          <p className="text-sm text-[#F5F5F5] font-semibold mb-1">
+            Não encontrou a resposta para a sua dúvida?
+          </p>
+          <p className="text-xs text-[#A3A3A3] mb-4">
+            Nossa equipe técnica está pronta para orientar sobre o conserto do seu veículo.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="#orcamento"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#222222] hover:bg-[#2C2C2C] text-[#F5F5F5] text-xs font-semibold border border-[#2C2C2C] transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+            >
+              Preencher formulário de cotação
+            </a>
+            <a
+              href="#localizacao"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#1F1F1F] hover:bg-[#282828] text-[#A3A3A3] hover:text-[#F5F5F5] text-xs font-medium border border-[#2C2C2C] transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+            >
+              Ver endereço e horários
+            </a>
+          </div>
+        </div>
       </div>
     </section>
   );

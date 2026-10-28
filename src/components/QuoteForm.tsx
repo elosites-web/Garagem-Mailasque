@@ -3,7 +3,7 @@ import { CheckCircle2, AlertCircle, Wrench, Calendar, FileText } from 'lucide-re
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { services } from '../data/services';
 import { buildWhatsAppUrl } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackLeadSubmission } from '../utils/analytics';
 
 const DAMAGED_PARTS_OPTIONS = [
   'Para-choque dianteiro',
@@ -130,12 +130,12 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
     }
 
     setIsSubmitting(true);
-    trackEvent('form_submit', {
+    trackLeadSubmission({
       service: formData.service,
-      is_insurance: formData.isInsurance,
-      has_year: Boolean(formData.vehicleYear.trim()),
-      parts_count: formData.damagedParts.length,
-      has_notes: Boolean(formData.damageDescription.trim()),
+      isInsurance: formData.isInsurance,
+      hasYear: Boolean(formData.vehicleYear.trim()),
+      partsCount: formData.damagedParts.length,
+      hasNotes: Boolean(formData.damageDescription.trim()),
     });
 
     // Monta o resumo das peças danificadas

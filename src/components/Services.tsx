@@ -117,8 +117,33 @@ export const Services: React.FC = () => {
           })}
         </div>
 
+        {/* Links internos contextuais para guiar o usuário */}
+        <div className="mt-10 pt-6 border-t border-[#222222] flex flex-wrap items-center justify-center gap-4 text-xs text-[#A3A3A3]">
+          <span>Quer conferir a qualidade na prática?</span>
+          <a
+            href="#antes-e-depois"
+            className="text-[#F97316] hover:text-[#EA580C] underline font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+          >
+            Ver Comparador Antes & Depois
+          </a>
+          <span aria-hidden="true" className="text-[#404040]">·</span>
+          <a
+            href="#galeria"
+            className="text-[#F97316] hover:text-[#EA580C] underline font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+          >
+            Ver Galeria da Oficina
+          </a>
+          <span aria-hidden="true" className="text-[#404040]">·</span>
+          <a
+            href="#orcamento"
+            className="text-[#F5F5F5] hover:text-[#F97316] underline font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+          >
+            Formulário de Cotação
+          </a>
+        </div>
+
         {/* Nota de rodapé da seção */}
-        <div className="mt-12 text-center text-xs text-[#737373]">
+        <div className="mt-6 text-center text-xs text-[#737373]">
           Não realizamos serviços avulsos de estética, polimento simples ou lava-rápido. Foco total em reparação e pintura de alta qualidade.
         </div>
       </div>

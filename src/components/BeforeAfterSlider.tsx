@@ -60,15 +60,21 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
 
+  const rafRef = useRef<number | null>(null);
+
   const handlePointerMove = useCallback(
     (e: PointerEvent) => {
       if (!isDragging) return;
-      updateSliderPosition(e.clientY);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        updateSliderPosition(e.clientY);
+      });
     },
     [isDragging, updateSliderPosition]
   );
 
   const handlePointerUp = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     if (isDragging) {
       setIsDragging(false);
       trackEvent('slider_interact', {

@@ -14,8 +14,15 @@ export const Header: React.FC<HeaderProps> = () => {
   const [activeSection, setActiveSection] = useState<string>('inicio');
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -39,25 +46,33 @@ export const Header: React.FC<HeaderProps> = () => {
       'contato',
     ];
 
+    let ticking = false;
     const handleScrollSpy = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60) {
-        setActiveSection('localizacao');
-        return;
-      }
-
-      const scrollPosition = window.scrollY + 130;
-      let current = 'inicio';
-
-      for (const id of sectionIds) {
-        const el = document.getElementById(id);
-        if (el) {
-          const top = el.offsetTop;
-          if (scrollPosition >= top) {
-            current = id;
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60) {
+            setActiveSection('localizacao');
+            ticking = false;
+            return;
           }
-        }
+
+          const scrollPosition = window.scrollY + 130;
+          let current = 'inicio';
+
+          for (const id of sectionIds) {
+            const el = document.getElementById(id);
+            if (el) {
+              const top = el.offsetTop;
+              if (scrollPosition >= top) {
+                current = id;
+              }
+            }
+          }
+          setActiveSection(current);
+          ticking = false;
+        });
+        ticking = true;
       }
-      setActiveSection(current);
     };
 
     window.addEventListener('scroll', handleScrollSpy, { passive: true });

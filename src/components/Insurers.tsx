@@ -82,6 +82,13 @@ export const Insurers: React.FC = () => {
                   <span>Fiz sinistro, como funciona?</span>
                   <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
                 </a>
+
+                <a
+                  href="#orcamento"
+                  className="text-xs text-center text-[#A3A3A3] hover:text-[#F97316] underline transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+                >
+                  Ou envie os dados do carro pelo formulário
+                </a>
               </div>
             </div>
           </div>

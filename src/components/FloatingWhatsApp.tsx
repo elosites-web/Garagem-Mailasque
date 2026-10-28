@@ -155,10 +155,13 @@ export const FloatingWhatsApp: React.FC = () => {
         {isChatOpen && (
           <motion.div
             key="whatsapp-chat-panel"
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.95 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+            transition={{
+              duration: shouldReduceMotion ? 0.15 : 0.35,
+              ease: [0.22, 1, 0.36, 1],
+            }}
             className="pointer-events-auto mb-3 w-[calc(100vw-2.5rem)] sm:w-84 md:w-96 max-w-sm rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-[#121212] text-white flex flex-col ring-1 ring-black/40"
             role="dialog"
             aria-modal="true"
@@ -298,12 +301,20 @@ export const FloatingWhatsApp: React.FC = () => {
                       height={24}
                     />
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#25D366] border border-[#141414]" />
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-[#141414] ${
+                      isOnline ? 'bg-[#25D366]' : 'bg-[#F59E0B]'
+                    }`}
+                  />
                 </div>
                 <span className="text-xs font-semibold text-white hover:text-[#F97316] transition-colors">
                   Garagem Mailasque
                 </span>
-                <span className="text-[10px] text-[#25D366] font-medium shrink-0">· Online</span>
+                {isOnline ? (
+                  <span className="text-[10px] text-[#25D366] font-medium shrink-0">· Online</span>
+                ) : (
+                  <span className="text-[10px] text-[#F59E0B] font-medium shrink-0">· Responderemos em breve</span>
+                )}
               </div>
 
               {/* Pergunta Centralizada */}
