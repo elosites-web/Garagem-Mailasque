@@ -218,9 +218,9 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
               </div>
 
               <p>
-                Esta Política de Privacidade foi elaborada em estrita conformidade com a{' '}
+                Esta Política de Privacidade foi elaborada com base nas diretrizes da{' '}
                 <strong className="text-[#F5F5F5]">Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 - LGPD)</strong>{' '}
-                e o Marco Civil da Internet (Lei nº 12.965/2014), estabelecendo com total transparência como a Garagem Mailasque
+                e no Marco Civil da Internet (Lei nº 12.965/2014), apresentando de forma transparente como a Garagem Mailasque
                 trata dados pessoais ao disponibilizar este website institucional e os canais de atendimento comercial.
               </p>
 

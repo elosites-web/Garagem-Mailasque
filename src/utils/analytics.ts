@@ -23,8 +23,9 @@ export interface CookiePreferences {
   updatedAt?: string;
 }
 
-const CONSENT_STORAGE_KEY = 'gm_cookie_consent_v1';
-const PREFERENCES_STORAGE_KEY = 'gm_cookie_preferences_v2';
+export const CONSENT_STORAGE_KEY = 'gm_cookie_consent_v1';
+export const PREFERENCES_STORAGE_KEY = 'gm_cookie_preferences_v2';
+export const CONSENT_EVENT_NAME = 'cookie_consent_updated';
 
 // Lista de chaves restritas para proteção contra envio de PII a plataformas analíticas
 const FORBIDDEN_PII_KEYS = new Set([
@@ -40,10 +41,16 @@ const FORBIDDEN_PII_KEYS = new Set([
   'plate',
   'address',
   'endereco',
+  'message',
+  'mensagem',
+  'texto',
+  'customtext',
+  'notes',
+  'observacoes',
 ]);
 
 /**
- * Remove dados identificáveis para respeitar estritamente a LGPD e termos do Google/Meta
+ * Remove dados identificáveis para respeitar a LGPD e termos do Google/Meta
  */
 function sanitizeEventParams(params?: Record<string, unknown>): Record<string, unknown> {
   if (!params) return {};
@@ -54,9 +61,9 @@ function sanitizeEventParams(params?: Record<string, unknown>): Record<string, u
     if (FORBIDDEN_PII_KEYS.has(lowerKey)) {
       continue;
     }
-    if (typeof value === 'string' && value.length > 100) {
+    if (typeof value === 'string') {
       cleaned[key] = value.slice(0, 100);
-    } else {
+    } else if (typeof value === 'number' || typeof value === 'boolean') {
       cleaned[key] = value;
     }
   }
@@ -64,7 +71,14 @@ function sanitizeEventParams(params?: Record<string, unknown>): Record<string, u
   return cleaned;
 }
 
+/**
+ * Obtém as preferências salvas no localStorage
+ */
 export function getCookiePreferences(): CookiePreferences {
+  if (typeof window === 'undefined') {
+    return { necessary: true, analytics: false, marketing: false };
+  }
+
   try {
     const raw = localStorage.getItem(PREFERENCES_STORAGE_KEY);
     if (raw) {
@@ -81,7 +95,7 @@ export function getCookiePreferences(): CookiePreferences {
   }
 
   // Compatibilidade com v1 se já houver consentimento simples
-  const legacy = getStoredConsent();
+  const legacy = getRawStoredConsent();
   if (legacy === 'granted') {
     return { necessary: true, analytics: true, marketing: true };
   } else if (legacy === 'denied') {
@@ -91,25 +105,11 @@ export function getCookiePreferences(): CookiePreferences {
   return { necessary: true, analytics: false, marketing: false };
 }
 
-export function saveCookiePreferences(prefs: { analytics: boolean; marketing: boolean }): void {
-  const payload: CookiePreferences = {
-    necessary: true,
-    analytics: prefs.analytics,
-    marketing: prefs.marketing,
-    updatedAt: new Date().toISOString(),
-  };
-
-  try {
-    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(payload));
-    setStoredConsent(prefs.analytics || prefs.marketing ? 'granted' : 'denied');
-  } catch {
-    // ignorar erro de storage restrito
-  }
-
-  updateConsentMode(payload);
-}
-
-export function getStoredConsent(): AnalyticsConsent {
+/**
+ * Retorna o valor bruto gravado no storage
+ */
+function getRawStoredConsent(): AnalyticsConsent {
+  if (typeof window === 'undefined') return 'pending';
   try {
     const val = localStorage.getItem(CONSENT_STORAGE_KEY);
     if (val === 'granted' || val === 'denied') return val;
@@ -119,11 +119,74 @@ export function getStoredConsent(): AnalyticsConsent {
   return 'pending';
 }
 
+/**
+ * Retorna o status de consentimento garantindo consistência entre status e preferências
+ */
+export function getStoredConsent(): AnalyticsConsent {
+  const rawStatus = getRawStoredConsent();
+  if (rawStatus === 'pending') return 'pending';
+
+  const prefs = getCookiePreferences();
+  // Se o status for 'granted' mas ambas as categorias opcionais estiverem desativadas,
+  // trata de forma consistente como 'denied'
+  if (rawStatus === 'granted') {
+    if (!prefs.analytics && !prefs.marketing) {
+      return 'denied';
+    }
+    return 'granted';
+  }
+
+  return 'denied';
+}
+
+export function isAnalyticsAllowed(): boolean {
+  return getStoredConsent() === 'granted' && getCookiePreferences().analytics;
+}
+
+export function isMarketingAllowed(): boolean {
+  return getStoredConsent() === 'granted' && getCookiePreferences().marketing;
+}
+
 export function setStoredConsent(consent: 'granted' | 'denied'): void {
+  if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(CONSENT_STORAGE_KEY, consent);
   } catch {
-    // ignorar erro
+    // ignorar erro de storage
+  }
+}
+
+/**
+ * Salva preferências e dispara evento para sincronização de UI e tags
+ */
+export function saveCookiePreferences(prefs: { analytics: boolean; marketing: boolean }): void {
+  if (typeof window === 'undefined') return;
+
+  const isAnyGranted = prefs.analytics || prefs.marketing;
+  const status: AnalyticsConsent = isAnyGranted ? 'granted' : 'denied';
+
+  const payload: CookiePreferences = {
+    necessary: true,
+    analytics: prefs.analytics,
+    marketing: prefs.marketing,
+    updatedAt: new Date().toISOString(),
+  };
+
+  try {
+    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(payload));
+    setStoredConsent(status);
+  } catch {
+    // ignorar erro de storage
+  }
+
+  // Atualiza Google Consent Mode v2 imediatamente
+  updateConsentMode(payload);
+
+  // Notifica componentes ouvintes (ex: fechamento do banner de cookies)
+  try {
+    window.dispatchEvent(new CustomEvent(CONSENT_EVENT_NAME, { detail: { status, preferences: payload } }));
+  } catch {
+    // fallback
   }
 }
 
@@ -191,10 +254,20 @@ export function updateConsentMode(prefs: CookiePreferences): void {
       delete window[`ga-disable-${ga4Id}`];
     }
   }
+
+  // Se o usuário alterou marketing e o Meta Pixel estiver carregado, atualiza via API oficial do Meta
+  if (typeof window.fbq === 'function') {
+    if (!prefs.marketing) {
+      window.fbq('consent', 'revoke');
+    } else {
+      window.fbq('consent', 'grant');
+    }
+  }
 }
 
 /**
  * Carrega dinamicamente os scripts do GA4, GTM e Meta Pixel conforme consentimento e env vars
+ * Previne injeção duplicada de tags e configura flags de opt-out quando revogado
  */
 export function initAnalyticsIfConsented(): void {
   if (typeof window === 'undefined') return;
@@ -210,9 +283,23 @@ export function initAnalyticsIfConsented(): void {
   // Atualiza Google Consent Mode v2 com escolhas ativas
   updateConsentMode(prefs);
 
-  // Inicializa GA4 se configurado e com consentimento analítico
-  // Previne injeção duplicada se GTM estiver presente (GTM deve gerenciar tags GA4 quando ambos existem)
-  if (prefs.analytics && ga4Id && !document.getElementById('ga4-script')) {
+  // ESTRATÉGIA DE INICIALIZAÇÃO DE TAGS:
+  // 1. Se GTM estiver configurado (VITE_GTM_ID), o GTM é o gerenciador de tags orquestrador.
+  // 2. Se apenas GA4 direto estiver configurado (sem GTM), inicializa gtag.js com VITE_GA4_ID.
+  // 3. Se ambos estiverem presentes, GTM é mantido como o container e gtag.js direto só é carregado
+  //    se explicitamente necessário, evitando double pageview e duplicidade.
+  if ((prefs.analytics || prefs.marketing) && gtmId && !document.getElementById('gtm-script')) {
+    const script = document.createElement('script');
+    script.id = 'gtm-script';
+    script.async = true;
+    script.innerHTML = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${gtmId}');`;
+    document.head.appendChild(script);
+  } else if (prefs.analytics && ga4Id && !gtmId && !document.getElementById('ga4-script')) {
+    // Somente injeta gtag.js direto se GTM NÃO estiver configurado (previne tags duplicadas)
     const script = document.createElement('script');
     script.id = 'ga4-script';
     script.async = true;
@@ -225,19 +312,6 @@ export function initAnalyticsIfConsented(): void {
       send_page_view: true,
       anonymize_ip: true,
     });
-  }
-
-  // Inicializa GTM se configurado e com consentimento analítico
-  if (prefs.analytics && gtmId && !document.getElementById('gtm-script')) {
-    const script = document.createElement('script');
-    script.id = 'gtm-script';
-    script.async = true;
-    script.innerHTML = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${gtmId}');`;
-    document.head.appendChild(script);
   }
 
   // Inicializa Meta Pixel se configurado e com consentimento de marketing
@@ -260,7 +334,11 @@ fbq('track', 'PageView');`;
 
 /**
  * Disparo centralizado de eventos analíticos customizados
- * Respeita preferências de consentimento, higieniza parâmetros PII e evita duplicações
+ * Estratégia de entrega unificada:
+ * - Se GTM estiver ativo (VITE_GTM_ID): envia evento ao window.dataLayer para que o GTM acione as tags
+ *   configuradas sem disparar gtag('event') duplicado.
+ * - Se apenas GA4 direto estiver ativo: envia via window.gtag('event') se consentimento analítico concedido.
+ * - Se Meta Pixel estiver ativo com consentimento: mapeia eventos correspondentes (Contact, Lead, etc.).
  */
 export function trackEvent(eventName: string, params?: Record<string, unknown>): void {
   if (typeof window === 'undefined') return;
@@ -268,27 +346,29 @@ export function trackEvent(eventName: string, params?: Record<string, unknown>):
   const prefs = getCookiePreferences();
   const consent = getStoredConsent();
 
-  // Se consentimento foi explicitamente negado ou nem analytics nem marketing foram autorizados
-  if (consent === 'denied' || (!prefs.analytics && !prefs.marketing)) {
+  // Bloqueio rigoroso: não dispara eventos se o consentimento não foi concedido
+  if (consent !== 'granted' || (!prefs.analytics && !prefs.marketing)) {
     return;
   }
 
   const safeParams = sanitizeEventParams(params);
+  const gtmId = import.meta.env.VITE_GTM_ID;
+  const ga4Id = import.meta.env.VITE_GA4_ID;
 
-  // Envia ao dataLayer para escuta de GTM
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({
-    event: eventName,
-    ...safeParams,
-    timestamp: new Date().toISOString(),
-  });
-
-  // Envia diretamente ao GA4 apenas se gtag estiver ativo
-  if (typeof window.gtag === 'function') {
+  // 1. Se GTM estiver configurado, envia ao dataLayer se houver consentimento analítico OU de marketing
+  if (gtmId && (prefs.analytics || prefs.marketing)) {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: eventName,
+      ...safeParams,
+      timestamp: new Date().toISOString(),
+    });
+  } else if (!gtmId && ga4Id && prefs.analytics && typeof window.gtag === 'function') {
+    // 2. Envia diretamente via gtag() SOMENTE se GTM NÃO estiver configurado (previne disparo duplo de GA4)
     window.gtag('event', eventName, safeParams);
   }
 
-  // Mapeia eventos correspondentes no Meta Pixel se autorizado
+  // 3. Mapeia eventos correspondentes no Meta Pixel se marketing concedido
   if (typeof window.fbq === 'function' && prefs.marketing) {
     if (eventName === 'generate_lead') {
       window.fbq('track', 'Lead');
@@ -301,7 +381,7 @@ export function trackEvent(eventName: string, params?: Record<string, unknown>):
 }
 
 /**
- * Eventos padronizados de conversão e micro-conversão para campanhas pagas (Google Ads, Meta Ads)
+ * Eventos padronizados de conversão para campanhas e tráfego pago
  */
 
 export function trackWhatsAppConversion(section: string, additionalParams?: Record<string, unknown>): void {
@@ -319,6 +399,12 @@ export function trackPhoneConversion(section: string): void {
   });
 }
 
+/**
+ * Registro de envio de formulário de cotação.
+ * Representa um lead que iniciou a solicitação de orçamento com intenção de contato no WhatsApp,
+ * não uma venda confirmada ou conversa concluída.
+ * Não coleta nem transmite nome, telefone ou mensagem de texto.
+ */
 export function trackLeadSubmission(params: {
   service: string;
   isInsurance: string;
@@ -327,12 +413,12 @@ export function trackLeadSubmission(params: {
   hasNotes: boolean;
 }): void {
   trackEvent('generate_lead', {
+    conversion_type: 'quote_form',
+    lead_intent: 'whatsapp_quote_request',
     service_type: params.service,
     is_insurance: params.isInsurance,
     has_vehicle_year: params.hasYear,
     damaged_parts_count: params.partsCount,
     has_damage_notes: params.hasNotes,
-    conversion_type: 'quote_form',
   });
 }
-

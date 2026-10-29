@@ -2,11 +2,11 @@ import React from 'react';
 import { ShieldCheck, CheckCircle, FileText, ArrowRight } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackWhatsAppConversion } from '../utils/analytics';
 
 export const Insurers: React.FC = () => {
   const handleInsuranceWhatsAppClick = () => {
-    trackEvent('whatsapp_click', { section: 'insurers' });
+    trackWhatsAppConversion('insurers');
   };
 
   return (

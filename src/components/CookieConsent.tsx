@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Settings } from 'lucide-react';
 import {
-  hasAnalyticsConfigured,
   getStoredConsent,
-  setStoredConsent,
   saveCookiePreferences,
   initAnalyticsIfConsented,
   setupDefaultConsentMode,
+  CONSENT_EVENT_NAME,
 } from '../utils/analytics';
 
 interface CookieConsentProps {
@@ -26,16 +25,31 @@ export const CookieConsent: React.FC<CookieConsentProps> = ({
     // Registra estado padrão de Consent Mode v2 antes do disparo de quaisquer tags
     setupDefaultConsentMode();
 
-    const consent = getStoredConsent();
-    if (consent === 'pending') {
-      setIsVisible(true);
-    } else if (consent === 'granted') {
-      initAnalyticsIfConsented();
-    }
+    const syncConsentState = () => {
+      const consent = getStoredConsent();
+      if (consent === 'pending') {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+        if (consent === 'granted') {
+          initAnalyticsIfConsented();
+        }
+      }
+    };
+
+    syncConsentState();
+
+    // Sincroniza em tempo real caso o usuário salve preferências no modal de privacidade
+    window.addEventListener(CONSENT_EVENT_NAME, syncConsentState);
+    window.addEventListener('storage', syncConsentState);
+
+    return () => {
+      window.removeEventListener(CONSENT_EVENT_NAME, syncConsentState);
+      window.removeEventListener('storage', syncConsentState);
+    };
   }, []);
 
   const handleAccept = () => {
-    setStoredConsent('granted');
     saveCookiePreferences({
       analytics: true,
       marketing: true,
@@ -45,7 +59,6 @@ export const CookieConsent: React.FC<CookieConsentProps> = ({
   };
 
   const handleDecline = () => {
-    setStoredConsent('denied');
     saveCookiePreferences({
       analytics: false,
       marketing: false,
@@ -57,7 +70,7 @@ export const CookieConsent: React.FC<CookieConsentProps> = ({
 
   return (
     <aside
-      aria-label="Consentimento de cookies e privacidade LGPD"
+      aria-label="Consentimento de cookies e privacidade"
       className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-5 bg-[#171717]/95 backdrop-blur-md border-t border-[#2C2C2C] shadow-2xl animate-in slide-in-from-bottom duration-200"
     >
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
@@ -78,7 +91,7 @@ export const CookieConsent: React.FC<CookieConsentProps> = ({
               onClick={onOpenPrivacyModal}
               className="text-[#F97316] underline hover:text-[#EA580C] focus-visible:outline-2 focus-visible:outline-[#F97316]"
             >
-              Política de Privacidade & LGPD
+              Política de Privacidade
             </button>
             . Você pode aceitar, recusar os opcionais ou personalizar suas preferências.
           </p>

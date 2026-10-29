@@ -2,7 +2,7 @@ import React from 'react';
 import { Instagram, Facebook, MapPin, Star, ArrowUp, Clock, Phone } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
-import { trackEvent, trackPhoneConversion } from '../utils/analytics';
+import { trackEvent, trackPhoneConversion, trackWhatsAppConversion } from '../utils/analytics';
 
 interface FooterProps {
   onOpenPrivacyModal?: () => void;
@@ -114,7 +114,7 @@ export const Footer: React.FC<FooterProps> = ({
                 href={buildWhatsAppUrl({ originSection: 'site-footer' })}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => trackEvent('whatsapp_click', { section: 'footer' })}
+                onClick={() => trackWhatsAppConversion('footer')}
                 className="flex items-center gap-2 hover:text-[#25D366] transition-colors"
               >
                 <WhatsAppIcon className="w-4 h-4 text-[#25D366]" aria-hidden="true" />
@@ -151,9 +151,10 @@ export const Footer: React.FC<FooterProps> = ({
               </a>
 
               <a
-                href={businessData.social.googleMaps}
+                href={businessData.social.googleWriteReview}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackEvent('maps_click', { section: 'footer-write-review' })}
                 className="flex items-center gap-2 hover:text-[#F59E0B] transition-colors"
               >
                 <Star className="w-4 h-4 text-[#F59E0B] fill-current" aria-hidden="true" />

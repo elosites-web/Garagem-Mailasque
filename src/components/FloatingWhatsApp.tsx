@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { X, Send, ArrowDownRight } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl, isWorkshopOpenNow } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 export const FloatingWhatsApp: React.FC = () => {
   const shouldReduceMotion = useReducedMotion();
@@ -99,7 +99,7 @@ export const FloatingWhatsApp: React.FC = () => {
 
   // Clique na bolha proativa -> abre WhatsApp direto
   const handleBubbleClick = () => {
-    trackEvent('whatsapp_click', { section: 'floating-bubble' });
+    trackWhatsAppConversion('floating-bubble');
     setShowBubble(false);
     setHasInteracted(true);
     const url = buildWhatsAppUrl({
@@ -109,24 +109,23 @@ export const FloatingWhatsApp: React.FC = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Clique no botão flutuante principal
+  // Clique no botão flutuante principal (abre/fecha o widget interno, sem disparar evento de conversão)
   const handleMainButtonClick = () => {
     if (isChatOpen) {
       setIsChatOpen(false);
     } else {
-      trackEvent('whatsapp_click', { section: 'floating-open-chat' });
+      trackEvent('chat_widget_toggle', { section: 'floating-button', action: 'open' });
       setShowBubble(false);
       setHasInteracted(true);
       setIsChatOpen(true);
     }
   };
 
-  // Envio de mensagem pelo formulário do painel de chat
+  // Envio de mensagem pelo formulário do painel de chat (abre o WhatsApp real)
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = messageInput.trim();
-    trackEvent('whatsapp_click', {
-      section: 'floating-chat-send',
+    trackWhatsAppConversion('floating-chat-send', {
       has_custom_message: Boolean(trimmed),
     });
 

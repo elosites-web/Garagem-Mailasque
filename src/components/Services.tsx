@@ -4,7 +4,7 @@ import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { motion, useReducedMotion } from 'motion/react';
 import { services, ServiceItem } from '../data/services';
 import { buildWhatsAppUrl } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackWhatsAppConversion } from '../utils/analytics';
 
 const iconMap = {
   Hammer: Hammer,
@@ -17,7 +17,7 @@ export const Services: React.FC = () => {
   const shouldReduceMotion = useReducedMotion();
 
   const handleServiceClick = (serviceName: string) => {
-    trackEvent('whatsapp_click', { section: 'services', service: serviceName });
+    trackWhatsAppConversion('services', { service_name: serviceName });
   };
 
   return (

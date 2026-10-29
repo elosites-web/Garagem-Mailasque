@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 interface HeaderProps {
   onOpenQuoteModal?: () => void;
@@ -174,7 +174,7 @@ export const Header: React.FC<HeaderProps> = () => {
   };
 
   const handleWhatsAppClick = () => {
-    trackEvent('whatsapp_click', { section: 'header' });
+    trackWhatsAppConversion('header');
   };
 
   return (

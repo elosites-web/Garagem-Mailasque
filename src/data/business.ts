@@ -4,7 +4,9 @@
  * Remove qualquer barra final para consistência absoluta.
  */
 const rawSiteUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SITE_URL) || 'https://www.garagemmailasque.com.br';
-export const SITE_URL: string = rawSiteUrl.replace(/\/+$/, '');
+export const SITE_URL: string = rawSiteUrl.includes('garagemmailasque.com.br') && !rawSiteUrl.includes('www.')
+  ? rawSiteUrl.replace('garagemmailasque.com.br', 'www.garagemmailasque.com.br').replace(/\/+$/, '')
+  : rawSiteUrl.replace(/\/+$/, '');
 
 export interface DaySchedule {
   dayOfWeek: number; // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
@@ -52,6 +54,8 @@ export interface BusinessData {
     googleMaps: string;
     googleDirections: string;
     googleReview: string;
+    googlePlaceId: string;
+    googleWriteReview: string;
   };
   rating: {
     score: number;
@@ -125,6 +129,8 @@ export const businessData: BusinessData = {
     googleMaps: 'https://www.google.com/maps/place/Garagem+Mailasque/@-23.5702156,-47.076927,17z/data=!3m1!4b1!4m6!3m5!1s0x94cf0d007ee6b1b5:0xf7bcdde9092c0dbb!8m2!3d-23.5702156!4d-47.0743521!16s%2Fg%2F11n9rzyf40',
     googleDirections: 'https://www.google.com/maps/dir/?api=1&destination=-23.5702156,-47.0743521',
     googleReview: 'https://www.google.com/maps/place/Garagem+Mailasque/@-23.5702156,-47.076927,17z/data=!3m1!4b1!4m6!3m5!1s0x94cf0d007ee6b1b5:0xf7bcdde9092c0dbb!8m2!3d-23.5702156!4d-47.0743521!16s%2Fg%2F11n9rzyf40',
+    googlePlaceId: 'ChIJtbHmfgANz5QRuw0sCendvPc',
+    googleWriteReview: 'https://search.google.com/local/writereview?placeid=ChIJtbHmfgANz5QRuw0sCendvPc',
   },
   rating: {
     score: 4.9,

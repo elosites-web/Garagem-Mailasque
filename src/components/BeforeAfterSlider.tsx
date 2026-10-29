@@ -3,7 +3,7 @@ import { Sparkles, MessageSquare, ChevronRight, Layers, SlidersHorizontal, Arrow
 import { BeforeAfterCase, beforeAfterCases } from '../data/beforeAfter';
 import { buildWhatsAppUrl } from '../data/business';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
-import { trackEvent } from '../utils/analytics';
+import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 interface BeforeAfterSliderProps {
   cases?: BeforeAfterCase[];
@@ -385,7 +385,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => trackEvent('whatsapp_click', { section: 'before-after-waiting-whatsapp' })}
+                onClick={() => trackWhatsAppConversion('before-after-waiting-whatsapp')}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20BA5A] text-[#0E2C1B] font-extrabold text-sm tracking-wide transition-all shadow-lg hover:shadow-[#25D366]/20 focus-visible:outline-2 focus-visible:outline-[#25D366]"
               >
                 <WhatsAppIcon className="w-4 h-4 fill-current" />

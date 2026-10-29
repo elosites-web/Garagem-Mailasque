@@ -2,11 +2,11 @@ import React from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackWhatsAppConversion } from '../utils/analytics';
 
 export const PartnerApvs: React.FC = () => {
   const handlePartnerClick = () => {
-    trackEvent('whatsapp_click', { section: 'partner-apvs' });
+    trackWhatsAppConversion('partner-apvs');
   };
 
   return (

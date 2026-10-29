@@ -2,11 +2,11 @@ import React from 'react';
 import { ArrowDown, Star, Shield, CheckCircle2 } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 export const Hero: React.FC = () => {
   const handleCtaClick = () => {
-    trackEvent('whatsapp_click', { section: 'hero' });
+    trackWhatsAppConversion('hero');
   };
 
   const handleVerServicosClick = (e: React.MouseEvent<HTMLAnchorElement>) => {

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Calculator, CreditCard, QrCode, Smartphone, Sparkles } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
-import { trackEvent } from '../utils/analytics';
+import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 export const PaymentSimulator: React.FC = () => {
   const [inputValue, setInputValue] = useState<string>('1200');
@@ -178,7 +178,7 @@ export const PaymentSimulator: React.FC = () => {
                 })}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => trackEvent('whatsapp_click', { section: 'simulator' })}
+                onClick={() => trackWhatsAppConversion('simulator', { simulated_value: numericValue })}
                 className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-[#0A0A0A] font-bold text-sm tracking-wide transition-colors duration-150 shadow-md focus-visible:outline-2 focus-visible:outline-[#F97316] mb-4"
               >
                 <WhatsAppIcon className="w-4 h-4 shrink-0" aria-hidden="true" />

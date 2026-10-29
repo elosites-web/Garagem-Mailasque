@@ -251,9 +251,9 @@ export const Testimonials: React.FC = () => {
                     <span className="text-sm font-bold text-[#F5F5F5] block">{item.author}</span>
                     <span className="text-[11px] text-[#737373]">{item.source}</span>
                   </div>
-                  <span className="text-xs text-[#22C55E] flex items-center gap-1 font-semibold bg-[#22C55E]/10 px-2 py-0.5 rounded-full border border-[#22C55E]/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" aria-hidden="true" />
-                    <span>Verificado</span>
+                  <span className="text-[11px] text-[#C9CDD2] flex items-center gap-1 font-medium bg-[#222222] px-2.5 py-0.5 rounded-full border border-[#333333]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#F97316]" aria-hidden="true" />
+                    <span>Depoimento</span>
                   </span>
                 </div>
               </motion.div>
