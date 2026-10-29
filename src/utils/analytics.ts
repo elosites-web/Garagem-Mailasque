@@ -284,10 +284,10 @@ export function initAnalyticsIfConsented(): void {
   updateConsentMode(prefs);
 
   // ESTRATÉGIA DE INICIALIZAÇÃO DE TAGS:
-  // 1. Se GTM estiver configurado (VITE_GTM_ID), o GTM é o gerenciador de tags orquestrador.
-  // 2. Se apenas GA4 direto estiver configurado (sem GTM), inicializa gtag.js com VITE_GA4_ID.
-  // 3. Se ambos estiverem presentes, GTM é mantido como o container e gtag.js direto só é carregado
-  //    se explicitamente necessário, evitando double pageview e duplicidade.
+  // 1. Se GTM estiver configurado (VITE_GTM_ID), o GTM é o proprietário único de tags (single tag owner).
+  //    Todas as tags (GA4, Google Ads, Meta Pixel) devem ser orquestradas via GTM para evitar duplicidade.
+  // 2. Se GTM estiver AUSENTE, preserva as vias diretas de GA4 e Meta Pixel, cada uma estritamente
+  //    condicionada ao seu respectivo consentimento (analytics vs. marketing).
   if ((prefs.analytics || prefs.marketing) && gtmId && !document.getElementById('gtm-script')) {
     const script = document.createElement('script');
     script.id = 'gtm-script';
@@ -298,27 +298,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','${gtmId}');`;
     document.head.appendChild(script);
-  } else if (prefs.analytics && ga4Id && !gtmId && !document.getElementById('ga4-script')) {
-    // Somente injeta gtag.js direto se GTM NÃO estiver configurado (previne tags duplicadas)
-    const script = document.createElement('script');
-    script.id = 'ga4-script';
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${ga4Id}`;
-    document.head.appendChild(script);
+  } else if (!gtmId) {
+    // Vias diretas (somente quando GTM estiver ausente):
+    // 2a. Inicializa GA4 direto se configurado e com consentimento analítico
+    if (prefs.analytics && ga4Id && !document.getElementById('ga4-script')) {
+      const script = document.createElement('script');
+      script.id = 'ga4-script';
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${ga4Id}`;
+      document.head.appendChild(script);
 
-    ensureGtagStub();
-    window.gtag!('js', new Date());
-    window.gtag!('config', ga4Id, {
-      send_page_view: true,
-      anonymize_ip: true,
-    });
-  }
+      ensureGtagStub();
+      window.gtag!('js', new Date());
+      window.gtag!('config', ga4Id, {
+        send_page_view: true,
+        anonymize_ip: true,
+      });
+    }
 
-  // Inicializa Meta Pixel se configurado e com consentimento de marketing
-  if (prefs.marketing && pixelId && !document.getElementById('pixel-script')) {
-    const script = document.createElement('script');
-    script.id = 'pixel-script';
-    script.innerHTML = `!function(f,b,e,v,n,t,s)
+    // 2b. Inicializa Meta Pixel direto se configurado e com consentimento de marketing
+    if (prefs.marketing && pixelId && !document.getElementById('pixel-script')) {
+      const script = document.createElement('script');
+      script.id = 'pixel-script';
+      script.innerHTML = `!function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
 n.callMethod.apply(n,arguments):n.queue.push(arguments)};
 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
@@ -328,17 +330,18 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '${pixelId}');
 fbq('track', 'PageView');`;
-    document.head.appendChild(script);
+      document.head.appendChild(script);
+    }
   }
 }
 
 /**
  * Disparo centralizado de eventos analíticos customizados
  * Estratégia de entrega unificada:
- * - Se GTM estiver ativo (VITE_GTM_ID): envia evento ao window.dataLayer para que o GTM acione as tags
- *   configuradas sem disparar gtag('event') duplicado.
- * - Se apenas GA4 direto estiver ativo: envia via window.gtag('event') se consentimento analítico concedido.
- * - Se Meta Pixel estiver ativo com consentimento: mapeia eventos correspondentes (Contact, Lead, etc.).
+ * - Se GTM estiver ativo (VITE_GTM_ID): GTM é o proprietário único de tags. Envia evento ao window.dataLayer
+ *   para que o GTM acione as tags configuradas (GA4, Google Ads, Meta Pixel) sem disparos diretos duplicados.
+ * - Se GTM estiver ausente: despacha diretamente via window.gtag('event') (com consentimento analítico)
+ *   e/ou via window.fbq('track') (com consentimento de marketing).
  */
 export function trackEvent(eventName: string, params?: Record<string, unknown>): void {
   if (typeof window === 'undefined') return;
@@ -355,7 +358,9 @@ export function trackEvent(eventName: string, params?: Record<string, unknown>):
   const gtmId = import.meta.env.VITE_GTM_ID;
   const ga4Id = import.meta.env.VITE_GA4_ID;
 
-  // 1. Se GTM estiver configurado, envia ao dataLayer se houver consentimento analítico OU de marketing
+  // 1. Se GTM estiver configurado, é o proprietário único de tags:
+  //    Envia exclusivamente ao dataLayer se houver consentimento analítico OU de marketing.
+  //    Suprime gtag() e fbq() diretos para eliminar 100% o risco de duplicidade de eventos (PageView/Lead/Contact).
   if (gtmId && (prefs.analytics || prefs.marketing)) {
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
@@ -363,19 +368,25 @@ export function trackEvent(eventName: string, params?: Record<string, unknown>):
       ...safeParams,
       timestamp: new Date().toISOString(),
     });
-  } else if (!gtmId && ga4Id && prefs.analytics && typeof window.gtag === 'function') {
-    // 2. Envia diretamente via gtag() SOMENTE se GTM NÃO estiver configurado (previne disparo duplo de GA4)
-    window.gtag('event', eventName, safeParams);
+    return;
   }
 
-  // 3. Mapeia eventos correspondentes no Meta Pixel se marketing concedido
-  if (typeof window.fbq === 'function' && prefs.marketing) {
-    if (eventName === 'generate_lead') {
-      window.fbq('track', 'Lead');
-    } else if (eventName === 'whatsapp_click' || eventName === 'phone_click') {
-      window.fbq('track', 'Contact');
-    } else {
-      window.fbq('trackCustom', eventName, safeParams);
+  // 2. Se GTM estiver AUSENTE, despacha pelas vias diretas conforme o consentimento de cada canal:
+  if (!gtmId) {
+    // 2a. Envio direto ao GA4 (apenas com consentimento analítico)
+    if (ga4Id && prefs.analytics && typeof window.gtag === 'function') {
+      window.gtag('event', eventName, safeParams);
+    }
+
+    // 2b. Envio direto ao Meta Pixel (apenas com consentimento de marketing)
+    if (prefs.marketing && typeof window.fbq === 'function') {
+      if (eventName === 'generate_lead') {
+        window.fbq('track', 'Lead');
+      } else if (eventName === 'whatsapp_click' || eventName === 'phone_click') {
+        window.fbq('track', 'Contact');
+      } else {
+        window.fbq('trackCustom', eventName, safeParams);
+      }
     }
   }
 }
