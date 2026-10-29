@@ -75,7 +75,7 @@ export const Gallery: React.FC = () => {
   const triggerRef = useRef<HTMLElement | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
-  // Refs de controle da animação contínua
+  // Refs de controle da animação contínua e toques no carrossel
   const isHoveredRef = useRef(false);
   const isInteractingRef = useRef(false);
   const interactionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -83,6 +83,8 @@ export const Gallery: React.FC = () => {
   const subpixelAccumulatorRef = useRef(0);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+  const isDraggingCarouselRef = useRef(false);
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Itens filtrados com base na seleção
   const filteredMedia: GalleryItem[] = React.useMemo(() => {
@@ -274,6 +276,8 @@ export const Gallery: React.FC = () => {
   };
 
   const handleOpenMedia = (item: GalleryItem, element: HTMLElement) => {
+    // Se o usuário estava arrastando/deslizando o carrossel no celular, não abre o modal acidentalmente
+    if (isDraggingCarouselRef.current) return;
     pauseAutoMotion(1000);
     triggerRef.current = element;
     const index = filteredMedia.findIndex((m) => m.id === item.id);
@@ -412,11 +416,33 @@ export const Gallery: React.FC = () => {
             onMouseLeave={() => {
               isHoveredRef.current = false;
             }}
-            onTouchStart={() => {
+            onTouchStart={(e) => {
               pauseAutoMotion(10000);
+              if (e.touches[0]) {
+                dragStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+              }
+              isDraggingCarouselRef.current = false;
+            }}
+            onTouchMove={(e) => {
+              if (dragStartPosRef.current && e.touches[0]) {
+                const deltaX = Math.abs(e.touches[0].clientX - dragStartPosRef.current.x);
+                const deltaY = Math.abs(e.touches[0].clientY - dragStartPosRef.current.y);
+                if (deltaX > 8 || deltaY > 8) {
+                  isDraggingCarouselRef.current = true;
+                }
+              }
             }}
             onTouchEnd={() => {
               pauseAutoMotion(2500);
+              dragStartPosRef.current = null;
+              setTimeout(() => {
+                isDraggingCarouselRef.current = false;
+              }, 120);
+            }}
+            onTouchCancel={() => {
+              pauseAutoMotion(2500);
+              dragStartPosRef.current = null;
+              isDraggingCarouselRef.current = false;
             }}
             onPointerDown={() => {
               pauseAutoMotion(10000);

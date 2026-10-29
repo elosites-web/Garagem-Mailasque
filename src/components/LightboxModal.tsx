@@ -5,6 +5,72 @@ import { GalleryItem } from '../data/gallery';
 
 export type { GalleryItem };
 
+export interface SwipeEvaluation {
+  isSwipe: boolean;
+  direction: 'next' | 'prev' | null;
+  deltaX: number;
+  deltaY: number;
+  velocity: number;
+}
+
+/**
+ * Avalia se um gesto de toque constitui um swipe horizontal intencional.
+ * Requer dominância horizontal para não conflitar com rolagem vertical ou toques acidentais.
+ */
+export function evaluateSwipeGesture({
+  deltaX,
+  deltaY,
+  durationMs,
+  minDistance = 40,
+  minVelocity = 0.28,
+  horizontalDominanceRatio = 1.2,
+}: {
+  deltaX: number;
+  deltaY: number;
+  durationMs: number;
+  minDistance?: number;
+  minVelocity?: number;
+  horizontalDominanceRatio?: number;
+}): SwipeEvaluation {
+  const absX = Math.abs(deltaX);
+  const absY = Math.abs(deltaY);
+  const velocity = durationMs > 0 ? absX / durationMs : 0;
+
+  // Requer dominância horizontal para garantir que gestos verticais ou diagonais não disparem navegação
+  const isHorizontallyDominant = absX > absY * horizontalDominanceRatio;
+
+  // Considera gesto válido se atingir a distância mínima OU for um movimento rápido ("flick")
+  const meetsDistance = absX >= minDistance;
+  const isFlick = absX >= 24 && durationMs < 350 && velocity >= minVelocity;
+
+  const isSwipe = isHorizontallyDominant && (meetsDistance || isFlick);
+
+  if (!isSwipe) {
+    return { isSwipe: false, direction: null, deltaX, deltaY, velocity };
+  }
+
+  return {
+    isSwipe: true,
+    direction: deltaX < 0 ? 'next' : 'prev',
+    deltaX,
+    deltaY,
+    velocity,
+  };
+}
+
+/**
+ * Identifica se o alvo do toque é um elemento ou controle interativo nativo
+ * (vídeo, botão, link, input) que não deve ter seu toque interceptado para swipe.
+ */
+export function isInteractiveSwipeTarget(target: EventTarget | null): boolean {
+  if (!target) return false;
+  const el = target as unknown as { closest?: (selector: string) => unknown };
+  if (typeof el.closest !== 'function') return false;
+  return !!el.closest(
+    'button, a, video, audio, input, textarea, select, [role="button"], [data-no-swipe="true"]'
+  );
+}
+
 interface LightboxModalProps {
   items: GalleryItem[];
   currentIndex: number;
@@ -24,6 +90,8 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+  const touchStartTime = useRef<number | null>(null);
+  const isSwipingHorizontal = useRef<boolean>(false);
 
   const currentItem = items[currentIndex];
 
@@ -99,6 +167,9 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
     const originalBodyRight = document.body.style.right;
     const originalBodyWidth = document.body.style.width;
     const originalBodyOverflow = document.body.style.overflow;
+    const originalBodyOverscroll = document.body.style.overscrollBehavior;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
 
     // Fixa o body na posição exata para evitar qualquer pulo ou ancoragem desencaixada no mobile
     document.body.style.position = 'fixed';
@@ -107,6 +178,9 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
     document.body.style.right = '0';
     document.body.style.width = '100%';
     document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.overscrollBehavior = 'none';
 
     // Foco inicial no botão fechar sem rolar a viewport (preventScroll: true)
     const timer = setTimeout(() => {
@@ -116,13 +190,16 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
     return () => {
       clearTimeout(timer);
 
-      // Restaura estilos originais do body
+      // Restaura estilos originais do body e html
       document.body.style.position = originalBodyPosition;
       document.body.style.top = originalBodyTop;
       document.body.style.left = originalBodyLeft;
       document.body.style.right = originalBodyRight;
       document.body.style.width = originalBodyWidth;
       document.body.style.overflow = originalBodyOverflow;
+      document.body.style.overscrollBehavior = originalBodyOverscroll;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
 
       // Restaura a ancoragem e coordenada de scroll anterior com precisão instantânea
       window.scrollTo({
@@ -130,25 +207,110 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         left: 0,
         behavior: 'instant' as ScrollBehavior,
       });
+
+      // Segunda verificação assíncrona para navegadores móveis (Safari iOS)
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          top: scrollY,
+          left: 0,
+          behavior: 'instant' as ScrollBehavior,
+        });
+      });
     };
   }, [isOpen]);
 
+  // Tratamento nativo e não-passivo de touchmove no modal para capturar gestos de swipe
+  // e impedir estritamente que o toque se propague ou trave o scroll da página principal
+  useEffect(() => {
+    if (!isOpen) return;
+    const modalEl = modalRef.current;
+    if (!modalEl) return;
+
+    const handleNativeTouchMove = (e: TouchEvent) => {
+      if (touchStartX.current === null || touchStartY.current === null) return;
+      if (e.touches.length !== 1) return; // Ignora multi-touch / pinch zoom
+
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - touchStartX.current;
+      const deltaY = touch.clientY - touchStartY.current;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      // Detecta dominância horizontal no início do movimento (a partir de 6px)
+      if (!isSwipingHorizontal.current && absX > 6 && absX > absY * 1.1) {
+        isSwipingHorizontal.current = true;
+      }
+
+      // Se for swipe horizontal, captura o gesto exclusivamente para o lightbox:
+      // previne a rolagem e rubber-banding nativos do navegador móvel e não propaga para a página principal
+      if (isSwipingHorizontal.current) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        e.stopPropagation();
+      }
+    };
+
+    // Registra listener nativo com passive: false para permitir preventDefault()
+    modalEl.addEventListener('touchmove', handleNativeTouchMove, { passive: false });
+
+    return () => {
+      modalEl.removeEventListener('touchmove', handleNativeTouchMove);
+    };
+  }, [isOpen]);
+
+  const resetTouchState = useCallback(() => {
+    touchStartX.current = null;
+    touchStartY.current = null;
+    touchStartTime.current = null;
+    isSwipingHorizontal.current = false;
+  }, []);
+
   // Gestos de toque para deslizar no celular (Swipe horizontal)
   const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
+    // Se o toque iniciou em botão, vídeo ou controle interativo, não intercepta para swipe
+    if (isInteractiveSwipeTarget(e.target)) {
+      resetTouchState();
+      return;
+    }
+
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+    touchStartTime.current = Date.now();
+    isSwipingHorizontal.current = false;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-    touchStartX.current = null;
-    touchStartY.current = null;
+    if (
+      touchStartX.current === null ||
+      touchStartY.current === null ||
+      touchStartTime.current === null
+    ) {
+      resetTouchState();
+      return;
+    }
 
-    // Detecta arrasto horizontal intencional sem bloquear rolagem vertical
-    if (Math.abs(deltaX) > 44 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4) {
-      if (deltaX < 0) {
+    const touch = e.changedTouches[0];
+    if (!touch) {
+      resetTouchState();
+      return;
+    }
+
+    const deltaX = touch.clientX - touchStartX.current;
+    const deltaY = touch.clientY - touchStartY.current;
+    const durationMs = Date.now() - touchStartTime.current;
+
+    const evaluation = evaluateSwipeGesture({
+      deltaX,
+      deltaY,
+      durationMs,
+    });
+
+    if (evaluation.isSwipe && evaluation.direction) {
+      if (evaluation.direction === 'next') {
         // Deslizar para a esquerda -> Próxima mídia
         onNavigate(currentIndex < items.length - 1 ? currentIndex + 1 : 0);
       } else {
@@ -156,6 +318,12 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         onNavigate(currentIndex > 0 ? currentIndex - 1 : items.length - 1);
       }
     }
+
+    resetTouchState();
+  };
+
+  const handleTouchCancel = () => {
+    resetTouchState();
   };
 
   if (!isOpen || !currentItem) return null;
@@ -178,7 +346,9 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
       }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="fixed inset-0 z-[9999] overflow-y-auto overscroll-contain bg-black/95 backdrop-blur-md"
+      onTouchCancel={handleTouchCancel}
+      className="fixed inset-0 z-[9999] overflow-y-auto overscroll-contain bg-black/95 backdrop-blur-md select-none touch-manipulation"
+      style={{ touchAction: 'pan-y' }}
     >
       {/* Botão de Fechar fixo para nunca sumir caso o usuário role no celular */}
       <button
@@ -227,10 +397,11 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         {/* Conteúdo Central */}
         <div
           className="relative max-w-5xl w-full flex flex-col items-center justify-center"
+          style={{ touchAction: 'pan-y' }}
           onClick={(e) => e.stopPropagation()}
         >
         {isTeam ? (
-          <div className="w-full flex flex-col items-center">
+          <div className="w-full flex flex-col items-center select-none" style={{ touchAction: 'pan-y' }}>
             {/* As duas fotos da equipe exibidas lado a lado no próprio Lightbox */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-h-[56vh] sm:max-h-[60vh] w-full">
               <img
@@ -240,7 +411,8 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
                 height={currentItem.photos[0].height}
                 loading="lazy"
                 decoding="async"
-                className="max-h-[26vh] sm:max-h-[60vh] w-auto max-w-[95%] sm:max-w-[48%] object-contain rounded-xl shadow-2xl border border-[#2C2C2C]"
+                draggable={false}
+                className="max-h-[26vh] sm:max-h-[60vh] w-auto max-w-[95%] sm:max-w-[48%] object-contain rounded-xl shadow-2xl border border-[#2C2C2C] select-none pointer-events-none"
               />
               <img
                 src={currentItem.photos[1].src}
@@ -249,7 +421,8 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
                 height={currentItem.photos[1].height}
                 loading="lazy"
                 decoding="async"
-                className="max-h-[26vh] sm:max-h-[60vh] w-auto max-w-[95%] sm:max-w-[48%] object-contain rounded-xl shadow-2xl border border-[#2C2C2C]"
+                draggable={false}
+                className="max-h-[26vh] sm:max-h-[60vh] w-auto max-w-[95%] sm:max-w-[48%] object-contain rounded-xl shadow-2xl border border-[#2C2C2C] select-none pointer-events-none"
               />
             </div>
             {/* Legenda Curta */}
@@ -266,6 +439,7 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
               playsInline
               preload="metadata"
               poster={currentItem.poster}
+              data-no-swipe="true"
               className="max-h-[56vh] sm:max-h-[60vh] w-auto max-w-full rounded-xl shadow-2xl bg-black border border-[#2C2C2C]"
             >
               Seu navegador não suporta a reprodução deste vídeo.
@@ -276,7 +450,7 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className="w-full flex flex-col items-center">
+          <div className="w-full flex flex-col items-center select-none" style={{ touchAction: 'pan-y' }}>
             <img
               src={currentItem.src}
               alt={currentItem.alt}
@@ -284,7 +458,8 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
               height={currentItem.height}
               loading="lazy"
               decoding="async"
-              className="max-h-[56vh] sm:max-h-[60vh] w-auto max-w-full object-contain rounded-xl shadow-2xl border border-[#2C2C2C]"
+              draggable={false}
+              className="max-h-[56vh] sm:max-h-[60vh] w-auto max-w-full object-contain rounded-xl shadow-2xl border border-[#2C2C2C] select-none pointer-events-none"
             />
             {/* Legenda Curta */}
             <div className="mt-3.5 text-center max-w-xl flex flex-col items-center px-4">
