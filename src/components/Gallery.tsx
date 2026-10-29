@@ -66,9 +66,23 @@ export const Gallery: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [hasScrolled, setHasScrolled] = useState(false);
 
+  // Estados de animação e visibilidade no viewport
+  const [isInViewport, setIsInViewport] = useState(false);
+  const [isAutoGliding, setIsAutoGliding] = useState(false);
+
+  const gallerySectionRef = useRef<HTMLElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const shouldReduceMotion = useReducedMotion();
+
+  // Refs de controle da animação contínua
+  const isHoveredRef = useRef(false);
+  const isInteractingRef = useRef(false);
+  const interactionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isRewindingRef = useRef(false);
+  const subpixelAccumulatorRef = useRef(0);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number | null>(null);
 
   // Itens filtrados com base na seleção
   const filteredMedia: GalleryItem[] = React.useMemo(() => {
@@ -76,6 +90,124 @@ export const Gallery: React.FC = () => {
     if (filter === 'videos') return galleryVideosList;
     return galleryAllSlides;
   }, [filter]);
+
+  // Observador de interseção: ativa movimento somente quando a galeria entra no viewport visível durante a rolagem
+  useEffect(() => {
+    const section = gallerySectionRef.current;
+    if (!section || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        setIsInViewport(entry.isIntersecting);
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.2, // Pelo menos 20% visível na tela
+      }
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
+
+  // Pausa a animação automática ao interagir (toque, clique, teclado) e retoma após um intervalo ocioso
+  const pauseAutoMotion = useCallback((delayMs = 3000) => {
+    isInteractingRef.current = true;
+    setIsAutoGliding(false);
+    if (interactionTimerRef.current) {
+      clearTimeout(interactionTimerRef.current);
+    }
+    interactionTimerRef.current = setTimeout(() => {
+      isInteractingRef.current = false;
+      lastTimeRef.current = null;
+    }, delayMs);
+  }, []);
+
+  // Loop de animação contínua, suave e sutil (da direita para a esquerda: scrollLeft cresce)
+  useEffect(() => {
+    if (shouldReduceMotion || !isInViewport || lightboxOpen) {
+      setIsAutoGliding(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      lastTimeRef.current = null;
+      return;
+    }
+
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    const SPEED_PX_PER_SEC = 28; // Velocidade sutil, suave e premium
+
+    const step = (now: number) => {
+      if (lastTimeRef.current === null) {
+        lastTimeRef.current = now;
+      }
+      const deltaSeconds = Math.min((now - lastTimeRef.current) / 1000, 0.1);
+      lastTimeRef.current = now;
+
+      const canAnimate =
+        isInViewport &&
+        !isHoveredRef.current &&
+        !isInteractingRef.current &&
+        !isRewindingRef.current &&
+        !lightboxOpen &&
+        !shouldReduceMotion;
+
+      if (canAnimate && carousel) {
+        setIsAutoGliding(true);
+        const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+
+        if (maxScroll > 10) {
+          if (carousel.scrollLeft >= maxScroll - 2) {
+            // Fim da galeria: pausa e retorna suavemente ao início
+            isRewindingRef.current = true;
+            setIsAutoGliding(false);
+
+            setTimeout(() => {
+              if (carouselRef.current) {
+                carouselRef.current.scrollTo({
+                  left: 0,
+                  behavior: 'smooth',
+                });
+              }
+
+              // Espera o retorno suave concluir antes de reiniciar
+              setTimeout(() => {
+                isRewindingRef.current = false;
+                lastTimeRef.current = null;
+                subpixelAccumulatorRef.current = 0;
+              }, 1200);
+            }, 2200);
+          } else {
+            subpixelAccumulatorRef.current += SPEED_PX_PER_SEC * deltaSeconds;
+            if (Math.abs(subpixelAccumulatorRef.current) >= 1) {
+              const movePx = Math.trunc(subpixelAccumulatorRef.current);
+              carousel.scrollLeft += movePx;
+              subpixelAccumulatorRef.current -= movePx;
+            }
+          }
+        }
+      } else {
+        setIsAutoGliding(false);
+      }
+
+      animationFrameRef.current = requestAnimationFrame(step);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(step);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      lastTimeRef.current = null;
+    };
+  }, [isInViewport, lightboxOpen, shouldReduceMotion]);
 
   // Atualiza estado das setas de navegação e barra de progresso
   const updateScrollStatus = useCallback(() => {
@@ -116,6 +248,7 @@ export const Gallery: React.FC = () => {
 
   // Ao trocar o filtro, a faixa retorna ao início
   const handleFilterChange = (newFilter: 'all' | 'photos' | 'videos') => {
+    pauseAutoMotion(2000);
     setFilter(newFilter);
     if (carouselRef.current) {
       carouselRef.current.scrollTo({
@@ -127,6 +260,7 @@ export const Gallery: React.FC = () => {
 
   // Rolagem por botões: largura visível * 0.8
   const handleScrollClick = (direction: 'left' | 'right') => {
+    pauseAutoMotion(3500);
     const el = carouselRef.current;
     if (!el) return;
 
@@ -140,6 +274,7 @@ export const Gallery: React.FC = () => {
   };
 
   const handleOpenMedia = (item: GalleryItem, element: HTMLElement) => {
+    pauseAutoMotion(1000);
     triggerRef.current = element;
     const index = filteredMedia.findIndex((m) => m.id === item.id);
     setActiveMediaIndex(index >= 0 ? index : 0);
@@ -149,6 +284,7 @@ export const Gallery: React.FC = () => {
 
   const handleCloseLightbox = () => {
     setLightboxOpen(false);
+    pauseAutoMotion(2000);
     if (triggerRef.current) {
       triggerRef.current.focus({ preventScroll: true });
     }
@@ -157,6 +293,7 @@ export const Gallery: React.FC = () => {
   return (
     <section
       id="galeria"
+      ref={gallerySectionRef}
       aria-labelledby="gallery-title"
       className="py-12 md:py-16 bg-[#0E0E0E] border-b border-[#2C2C2C] relative"
     >
@@ -261,14 +398,35 @@ export const Gallery: React.FC = () => {
             aria-hidden="true"
           />
 
-          {/* Faixa única horizontal com CSS scroll-snap */}
+          {/* Faixa única horizontal com animação suave e suporte a toque */}
           <div
             ref={carouselRef}
             role="region"
             aria-roledescription="carousel"
             aria-label="Galeria de fotos e vídeos da Garagem Mailasque"
             tabIndex={0}
-            className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-2 px-1 focus-visible:outline-1 focus-visible:outline-[#F97316]"
+            onMouseEnter={() => {
+              isHoveredRef.current = true;
+              setIsAutoGliding(false);
+            }}
+            onMouseLeave={() => {
+              isHoveredRef.current = false;
+            }}
+            onTouchStart={() => {
+              pauseAutoMotion(10000);
+            }}
+            onTouchEnd={() => {
+              pauseAutoMotion(2500);
+            }}
+            onPointerDown={() => {
+              pauseAutoMotion(10000);
+            }}
+            onPointerUp={() => {
+              pauseAutoMotion(2500);
+            }}
+            className={`flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-2 px-1 focus-visible:outline-1 focus-visible:outline-[#F97316] ${
+              isAutoGliding ? 'scroll-auto' : 'snap-x snap-mandatory scroll-smooth'
+            }`}
           >
             {filteredMedia.map((item, index) => {
               const isVideo = item.type === 'video';
@@ -363,7 +521,6 @@ export const Gallery: React.FC = () => {
                         {/* Legenda unificada da equipe */}
                         <div className="absolute bottom-0 left-0 right-0 p-4 text-left z-10 pointer-events-none">
                           <p className="text-sm font-bold text-[#F5F5F5] line-clamp-1">{item.caption}</p>
-                          <p className="text-xs text-[#A3A3A3] mt-0.5">Nossa equipe reunida na oficina</p>
                         </div>
                       </div>
                     ) : (
@@ -432,14 +589,9 @@ export const Gallery: React.FC = () => {
                         {/* Legenda inferior */}
                         <div className="absolute bottom-0 left-0 right-0 p-4 text-left z-10 pointer-events-none">
                           {isVideo ? (
-                            <>
-                              <p className="text-sm font-bold text-[#F5F5F5] line-clamp-1">
-                                {(item as GalleryVideo).title}
-                              </p>
-                              <p className="text-xs text-[#A3A3A3] mt-0.5 line-clamp-1">
-                                {(item as GalleryVideo).description}
-                              </p>
-                            </>
+                            <p className="text-sm font-bold text-[#F5F5F5] line-clamp-1">
+                              {(item as GalleryVideo).title}
+                            </p>
                           ) : (
                             <p className="text-sm font-bold text-[#F5F5F5] line-clamp-1">{item.caption}</p>
                           )}
