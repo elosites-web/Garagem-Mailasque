@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
     "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {

@@ -1,16 +1,15 @@
 /**
  * Módulo de telemetria analítica com conformidade estrita LGPD e Google Consent Mode v2.
- * Carrega scripts de mensuração (GA4, GTM, Meta Pixel) SOMENTE com consentimento prévio
- * e apenas se as respectivas variáveis de ambiente com prefixo VITE_ existirem.
- * Previne duplicidade de tags, múltiplos disparos acidentais e vazamento de dados pessoais (PII).
+ * Arquitetura baseada no Google Tag Manager (GTM) como CONTAINER ÚNICO de tags.
+ * GA4 e Google Ads são orquestrados internamente pelo GTM, sem injeção direta de scripts gtag.js ou Meta Pixel.
+ * Carrega o GTM SOMENTE após o visitante conceder consentimento prévio e se VITE_GTM_ID estiver configurado.
+ * Previne duplicidade de eventos, bloqueia vazamento de PII e respeita escolhas individuais de consentimento.
  */
 
 declare global {
   interface Window {
     dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-    [key: `ga-disable-${string}`]: boolean | undefined;
   }
 }
 
@@ -27,8 +26,8 @@ export const CONSENT_STORAGE_KEY = 'gm_cookie_consent_v1';
 export const PREFERENCES_STORAGE_KEY = 'gm_cookie_preferences_v2';
 export const CONSENT_EVENT_NAME = 'cookie_consent_updated';
 
-// Lista de chaves restritas para proteção contra envio de PII a plataformas analíticas
-const FORBIDDEN_PII_KEYS = new Set([
+// Lista de chaves restritas para proteção estrita contra envio de PII a plataformas analíticas
+export const FORBIDDEN_PII_KEYS = new Set([
   'name',
   'nome',
   'phone',
@@ -50,9 +49,9 @@ const FORBIDDEN_PII_KEYS = new Set([
 ]);
 
 /**
- * Remove dados identificáveis para respeitar a LGPD e termos do Google/Meta
+ * Remove dados identificáveis para respeitar a LGPD e termos do Google Ads/GA4
  */
-function sanitizeEventParams(params?: Record<string, unknown>): Record<string, unknown> {
+export function sanitizeEventParams(params?: Record<string, unknown>): Record<string, unknown> {
   if (!params) return {};
   const cleaned: Record<string, unknown> = {};
 
@@ -190,17 +189,24 @@ export function saveCookiePreferences(prefs: { analytics: boolean; marketing: bo
   }
 }
 
+export function getGtmId(): string | undefined {
+  if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_GTM_ID) {
+    return import.meta.env.VITE_GTM_ID;
+  }
+  if (typeof process !== 'undefined' && process.env?.VITE_GTM_ID) {
+    return process.env.VITE_GTM_ID;
+  }
+  return undefined;
+}
+
 export function hasAnalyticsConfigured(): boolean {
-  const ga4 = import.meta.env.VITE_GA4_ID;
-  const gtm = import.meta.env.VITE_GTM_ID;
-  const pixel = import.meta.env.VITE_META_PIXEL_ID;
-  return Boolean(ga4 || gtm || pixel);
+  return Boolean(getGtmId());
 }
 
 /**
  * Garante que a fila do dataLayer e a função global gtag existam sem sobrescrever instâncias ativas
  */
-function ensureGtagStub(): void {
+export function ensureGtagStub(): void {
   if (typeof window === 'undefined') return;
   window.dataLayer = window.dataLayer || [];
   if (typeof window.gtag !== 'function') {
@@ -212,7 +218,9 @@ function ensureGtagStub(): void {
 }
 
 /**
- * Configura o estado padrão do Google Consent Mode v2 antes do disparo de tags
+ * Configura o estado padrão do Google Consent Mode v2 antes do disparo de quaisquer tags.
+ * Deve ser chamado antes de carregar o GTM para que a inicialização do container
+ * leia os sinais de consentimento prévio ou negado.
  */
 export function setupDefaultConsentMode(): void {
   if (typeof window === 'undefined') return;
@@ -232,7 +240,7 @@ export function setupDefaultConsentMode(): void {
 }
 
 /**
- * Atualiza o consentimento em tempo real quando o usuário aceita ou altera preferências
+ * Atualiza o consentimento em tempo real quando o usuário aceita, personaliza ou revoga opções
  */
 export function updateConsentMode(prefs: CookiePreferences): void {
   if (typeof window === 'undefined') return;
@@ -244,30 +252,17 @@ export function updateConsentMode(prefs: CookiePreferences): void {
     ad_user_data: prefs.marketing ? 'granted' : 'denied',
     ad_personalization: prefs.marketing ? 'granted' : 'denied',
   });
-
-  // Se o usuário desativou analytics explicitamente, ativa flag de opt-out global do GA4
-  const ga4Id = import.meta.env.VITE_GA4_ID;
-  if (ga4Id) {
-    if (!prefs.analytics) {
-      window[`ga-disable-${ga4Id}`] = true;
-    } else {
-      delete window[`ga-disable-${ga4Id}`];
-    }
-  }
-
-  // Se o usuário alterou marketing e o Meta Pixel estiver carregado, atualiza via API oficial do Meta
-  if (typeof window.fbq === 'function') {
-    if (!prefs.marketing) {
-      window.fbq('consent', 'revoke');
-    } else {
-      window.fbq('consent', 'grant');
-    }
-  }
 }
 
 /**
- * Carrega dinamicamente os scripts do GA4, GTM e Meta Pixel conforme consentimento e env vars
- * Previne injeção duplicada de tags e configura flags de opt-out quando revogado
+ * Carrega dinamicamente o script do Google Tag Manager (GTM)
+ * SOMENTE se houver consentimento para pelo menos uma categoria opcional
+ * e se VITE_GTM_ID estiver configurado no ambiente.
+ *
+ * NOTA DE ARQUITETURA:
+ * O GTM é o único proprietário de tags (Single Tag Owner).
+ * Nenhum script direto de GA4 (gtag.js) ou Meta Pixel é injetado.
+ * A conformidade com LGPD depende também de configurações de 'Consentimento de Tag' no GTM.
  */
 export function initAnalyticsIfConsented(): void {
   if (typeof window === 'undefined') return;
@@ -276,19 +271,15 @@ export function initAnalyticsIfConsented(): void {
   if (consent !== 'granted') return;
 
   const prefs = getCookiePreferences();
-  const ga4Id = import.meta.env.VITE_GA4_ID;
-  const gtmId = import.meta.env.VITE_GTM_ID;
-  const pixelId = import.meta.env.VITE_META_PIXEL_ID;
+  if (!prefs.analytics && !prefs.marketing) return;
+
+  const gtmId = getGtmId();
+  if (!gtmId) return;
 
   // Atualiza Google Consent Mode v2 com escolhas ativas
   updateConsentMode(prefs);
 
-  // ESTRATÉGIA DE INICIALIZAÇÃO DE TAGS:
-  // 1. Se GTM estiver configurado (VITE_GTM_ID), o GTM é o proprietário único de tags (single tag owner).
-  //    Todas as tags (GA4, Google Ads, Meta Pixel) devem ser orquestradas via GTM para evitar duplicidade.
-  // 2. Se GTM estiver AUSENTE, preserva as vias diretas de GA4 e Meta Pixel, cada uma estritamente
-  //    condicionada ao seu respectivo consentimento (analytics vs. marketing).
-  if ((prefs.analytics || prefs.marketing) && gtmId && !document.getElementById('gtm-script')) {
+  if (!document.getElementById('gtm-script')) {
     const script = document.createElement('script');
     script.id = 'gtm-script';
     script.async = true;
@@ -298,103 +289,44 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','${gtmId}');`;
     document.head.appendChild(script);
-  } else if (!gtmId) {
-    // Vias diretas (somente quando GTM estiver ausente):
-    // 2a. Inicializa GA4 direto se configurado e com consentimento analítico
-    if (prefs.analytics && ga4Id && !document.getElementById('ga4-script')) {
-      const script = document.createElement('script');
-      script.id = 'ga4-script';
-      script.async = true;
-      script.src = `https://www.googletagmanager.com/gtag/js?id=${ga4Id}`;
-      document.head.appendChild(script);
-
-      ensureGtagStub();
-      window.gtag!('js', new Date());
-      window.gtag!('config', ga4Id, {
-        send_page_view: true,
-        anonymize_ip: true,
-      });
-    }
-
-    // 2b. Inicializa Meta Pixel direto se configurado e com consentimento de marketing
-    if (prefs.marketing && pixelId && !document.getElementById('pixel-script')) {
-      const script = document.createElement('script');
-      script.id = 'pixel-script';
-      script.innerHTML = `!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '${pixelId}');
-fbq('track', 'PageView');`;
-      document.head.appendChild(script);
-    }
   }
 }
 
 /**
- * Disparo centralizado de eventos analíticos customizados
- * Estratégia de entrega unificada:
- * - Se GTM estiver ativo (VITE_GTM_ID): GTM é o proprietário único de tags. Envia evento ao window.dataLayer
- *   para que o GTM acione as tags configuradas (GA4, Google Ads, Meta Pixel) sem disparos diretos duplicados.
- * - Se GTM estiver ausente: despacha diretamente via window.gtag('event') (com consentimento analítico)
- *   e/ou via window.fbq('track') (com consentimento de marketing).
+ * Disparo centralizado de eventos analíticos no dataLayer.
+ *
+ * Estratégia Single Tag Owner (GTM):
+ * - Envia eventos exclusivamente via window.dataLayer.push({ event, ...params })
+ * - Não efetua chamadas diretas via window.gtag('event') ou window.fbq()
+ * - Se o consentimento não foi concedido ou foi revogado, bloqueia o envio imediatamente
  */
 export function trackEvent(eventName: string, params?: Record<string, unknown>): void {
   if (typeof window === 'undefined') return;
 
-  const prefs = getCookiePreferences();
   const consent = getStoredConsent();
+  const prefs = getCookiePreferences();
 
-  // Bloqueio rigoroso: não dispara eventos se o consentimento não foi concedido
+  // Bloqueio rigoroso: não dispara eventos se o consentimento não foi concedido ou se ambas as categorias opcionais foram recusadas
   if (consent !== 'granted' || (!prefs.analytics && !prefs.marketing)) {
     return;
   }
 
   const safeParams = sanitizeEventParams(params);
-  const gtmId = import.meta.env.VITE_GTM_ID;
-  const ga4Id = import.meta.env.VITE_GA4_ID;
 
-  // 1. Se GTM estiver configurado, é o proprietário único de tags:
-  //    Envia exclusivamente ao dataLayer se houver consentimento analítico OU de marketing.
-  //    Suprime gtag() e fbq() diretos para eliminar 100% o risco de duplicidade de eventos (PageView/Lead/Contact).
-  if (gtmId && (prefs.analytics || prefs.marketing)) {
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-      event: eventName,
-      ...safeParams,
-      timestamp: new Date().toISOString(),
-    });
-    return;
-  }
-
-  // 2. Se GTM estiver AUSENTE, despacha pelas vias diretas conforme o consentimento de cada canal:
-  if (!gtmId) {
-    // 2a. Envio direto ao GA4 (apenas com consentimento analítico)
-    if (ga4Id && prefs.analytics && typeof window.gtag === 'function') {
-      window.gtag('event', eventName, safeParams);
-    }
-
-    // 2b. Envio direto ao Meta Pixel (apenas com consentimento de marketing)
-    if (prefs.marketing && typeof window.fbq === 'function') {
-      if (eventName === 'generate_lead') {
-        window.fbq('track', 'Lead');
-      } else if (eventName === 'whatsapp_click' || eventName === 'phone_click') {
-        window.fbq('track', 'Contact');
-      } else {
-        window.fbq('trackCustom', eventName, safeParams);
-      }
-    }
-  }
+  // Envia exclusivamente ao dataLayer para orquestração pelo GTM
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({
+    event: eventName,
+    ...safeParams,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 /**
- * Eventos padronizados de conversão para campanhas e tráfego pago
+ * Conversão Primária do Site: Clique real de saída para o WhatsApp.
+ * Deve ser configurado como Key Event no GA4 e Tag de Conversão no Google Ads via GTM.
+ * Não coleta mensagens, nomes ou números de telefone.
  */
-
 export function trackWhatsAppConversion(section: string, additionalParams?: Record<string, unknown>): void {
   trackEvent('whatsapp_click', {
     section,
@@ -403,6 +335,9 @@ export function trackWhatsAppConversion(section: string, additionalParams?: Reco
   });
 }
 
+/**
+ * Conversão Secundária: Clique no telefone fixo/celular
+ */
 export function trackPhoneConversion(section: string): void {
   trackEvent('phone_click', {
     section,
@@ -411,10 +346,10 @@ export function trackPhoneConversion(section: string): void {
 }
 
 /**
- * Registro de envio de formulário de cotação.
- * Representa um lead que iniciou a solicitação de orçamento com intenção de contato no WhatsApp,
- * não uma venda confirmada ou conversa concluída.
- * Não coleta nem transmite nome, telefone ou mensagem de texto.
+ * Registro de envio de formulário de cotação:
+ * Representa um lead técnico que solicitou orçamento e foi direcionado ao WhatsApp.
+ * Mantido como evento separado ('generate_lead') da conversão primária de clique direto ('whatsapp_click').
+ * Não coleta nem transmite nome, telefone, placa ou texto da mensagem.
  */
 export function trackLeadSubmission(params: {
   service: string;
