@@ -24,6 +24,8 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   const currentItem = items[currentIndex];
 
@@ -72,12 +74,12 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         if (e.shiftKey) {
           if (document.activeElement === firstElement) {
             e.preventDefault();
-            lastElement.focus();
+            lastElement.focus({ preventScroll: true });
           }
         } else {
           if (document.activeElement === lastElement) {
             e.preventDefault();
-            firstElement.focus();
+            firstElement.focus({ preventScroll: true });
           }
         }
       }
@@ -87,21 +89,76 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, currentIndex, items.length, onClose, onNavigate, getFocusableElements]);
 
-  // Bloqueio de scroll e foco inicial no botão fechar
+  // Bloqueio de scroll blindado para celular e desktop preservando a ancoragem exata da tela
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      const timer = setTimeout(() => {
-        closeButtonRef.current?.focus();
-      }, 50);
-      return () => {
-        clearTimeout(timer);
-        document.body.style.overflow = '';
-      };
-    } else {
-      document.body.style.overflow = '';
-    }
+    if (!isOpen) return;
+
+    // Salva a posição exata de rolagem da janela antes de abrir o modal
+    const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyTop = document.body.style.top;
+    const originalBodyLeft = document.body.style.left;
+    const originalBodyRight = document.body.style.right;
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyOverflow = document.body.style.overflow;
+
+    // Fixa o body na posição exata para evitar qualquer pulo ou ancoragem desencaixada no mobile
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+
+    // Foco inicial no botão fechar sem rolar a viewport (preventScroll: true)
+    const timer = setTimeout(() => {
+      closeButtonRef.current?.focus({ preventScroll: true });
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+
+      // Restaura estilos originais do body
+      document.body.style.position = originalBodyPosition;
+      document.body.style.top = originalBodyTop;
+      document.body.style.left = originalBodyLeft;
+      document.body.style.right = originalBodyRight;
+      document.body.style.width = originalBodyWidth;
+      document.body.style.overflow = originalBodyOverflow;
+
+      // Restaura a ancoragem e coordenada de scroll anterior com precisão instantânea
+      window.scrollTo({
+        top: scrollY,
+        left: 0,
+        behavior: 'instant' as ScrollBehavior,
+      });
+    };
   }, [isOpen]);
+
+  // Gestos de toque para deslizar no celular (Swipe horizontal)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    // Detecta arrasto horizontal intencional sem bloquear rolagem vertical
+    if (Math.abs(deltaX) > 44 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4) {
+      if (deltaX < 0) {
+        // Deslizar para a esquerda -> Próxima mídia
+        onNavigate(currentIndex < items.length - 1 ? currentIndex + 1 : 0);
+      } else {
+        // Deslizar para a direita -> Mídia anterior
+        onNavigate(currentIndex > 0 ? currentIndex - 1 : items.length - 1);
+      }
+    }
+  };
 
   if (!isOpen || !currentItem) return null;
 
@@ -132,14 +189,21 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
       aria-modal="true"
       aria-label={modalAriaLabel}
       ref={modalRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10 bg-black/90 backdrop-blur-md"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/95 backdrop-blur-md"
     >
-      {/* Botão de Fechar */}
+      {/* Botão de Fechar fixo para nunca sumir caso o usuário role no celular */}
       <button
         ref={closeButtonRef}
         type="button"
         onClick={onClose}
-        className="absolute top-4 right-4 z-50 p-3 rounded-full bg-[#1F1F1F]/80 text-[#F5F5F5] hover:bg-[#F97316] hover:text-[#0A0A0A] transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+        className="fixed top-3 right-3 sm:top-5 sm:right-5 z-[60] p-3 rounded-full bg-[#1F1F1F]/90 text-[#F5F5F5] hover:bg-[#F97316] hover:text-[#0A0A0A] shadow-2xl border border-white/10 transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316] touch-manipulation cursor-pointer"
         aria-label="Fechar visualizador"
       >
         <X className="w-6 h-6" aria-hidden="true" />
@@ -150,7 +214,7 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         <button
           type="button"
           onClick={() => onNavigate(currentIndex > 0 ? currentIndex - 1 : items.length - 1)}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-50 p-3 rounded-full bg-[#1F1F1F]/80 text-[#F5F5F5] hover:bg-[#F97316] hover:text-[#0A0A0A] transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+          className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-[60] p-2.5 sm:p-3 rounded-full bg-[#1F1F1F]/90 text-[#F5F5F5] hover:bg-[#F97316] hover:text-[#0A0A0A] shadow-2xl border border-white/10 transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316] touch-manipulation cursor-pointer"
           aria-label="Mídia anterior"
         >
           <ChevronLeft className="w-6 h-6" aria-hidden="true" />
@@ -162,15 +226,27 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         <button
           type="button"
           onClick={() => onNavigate(currentIndex < items.length - 1 ? currentIndex + 1 : 0)}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-50 p-3 rounded-full bg-[#1F1F1F]/80 text-[#F5F5F5] hover:bg-[#F97316] hover:text-[#0A0A0A] transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
+          className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-[60] p-2.5 sm:p-3 rounded-full bg-[#1F1F1F]/90 text-[#F5F5F5] hover:bg-[#F97316] hover:text-[#0A0A0A] shadow-2xl border border-white/10 transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316] touch-manipulation cursor-pointer"
           aria-label="Próxima mídia"
         >
           <ChevronRight className="w-6 h-6" aria-hidden="true" />
         </button>
       )}
 
-      {/* Conteúdo Central */}
-      <div className="relative max-w-5xl w-full max-h-[88vh] flex flex-col items-center justify-center">
+      {/* Wrapper de centralização que permite rolagem natural em telas menores */}
+      <div
+        className="min-h-full w-full flex items-center justify-center p-4 sm:p-6 md:p-10 py-16 sm:py-12"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        {/* Conteúdo Central */}
+        <div
+          className="relative max-w-5xl w-full flex flex-col items-center justify-center"
+          onClick={(e) => e.stopPropagation()}
+        >
         {isTeam ? (
           <div className="w-full flex flex-col items-center">
             {/* As duas fotos da equipe exibidas lado a lado no próprio Lightbox */}
@@ -289,10 +365,13 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
         )}
 
         {/* Contador */}
-        <div className="mt-2.5 text-xs text-[#737373]">
-          {currentIndex + 1} de {items.length}
+        <div className="mt-2.5 text-xs text-[#737373] text-center">
+          <span>{currentIndex + 1} de {items.length}</span>
+          <span className="hidden sm:inline text-[#525252] mx-2">•</span>
+          <span className="hidden sm:inline text-[#A3A3A3]">Deslize ou use as setas para navegar</span>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };

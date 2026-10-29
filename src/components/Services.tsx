@@ -142,10 +142,6 @@ export const Services: React.FC = () => {
           </a>
         </div>
 
-        {/* Nota de rodapé da seção */}
-        <div className="mt-6 text-center text-xs text-[#737373]">
-          Não realizamos serviços avulsos de estética, polimento simples ou lava-rápido. Foco total em reparação e pintura de alta qualidade.
-        </div>
       </div>
     </section>
   );

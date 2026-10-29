@@ -150,7 +150,7 @@ export const Gallery: React.FC = () => {
   const handleCloseLightbox = () => {
     setLightboxOpen(false);
     if (triggerRef.current) {
-      triggerRef.current.focus();
+      triggerRef.current.focus({ preventScroll: true });
     }
   };
 
@@ -295,7 +295,17 @@ export const Gallery: React.FC = () => {
                     type="button"
                     onClick={(e) => handleOpenMedia(item, e.currentTarget)}
                     onFocus={(e) => {
-                      e.currentTarget.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+                      if (carouselRef.current && e.currentTarget.matches(':focus-visible')) {
+                        const carousel = carouselRef.current;
+                        const button = e.currentTarget;
+                        const carouselRect = carousel.getBoundingClientRect();
+                        const buttonRect = button.getBoundingClientRect();
+                        if (buttonRect.left < carouselRect.left) {
+                          carousel.scrollLeft += (buttonRect.left - carouselRect.left) - 16;
+                        } else if (buttonRect.right > carouselRect.right) {
+                          carousel.scrollLeft += (buttonRect.right - carouselRect.right) + 16;
+                        }
+                      }
                     }}
                     className="group relative h-full rounded-2xl overflow-hidden bg-[#171717] border border-[#2C2C2C] hover:border-[#F97316] transition-all duration-200 cursor-pointer text-left p-0 block shadow-md focus-visible:outline-2 focus-visible:outline-[#F97316]"
                     aria-label={label}
