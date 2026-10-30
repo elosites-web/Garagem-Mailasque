@@ -1,4 +1,4 @@
-import { WHATSAPP_EMOJIS } from './business';
+import { WHATSAPP_TEMPLATES } from './business';
 
 export interface ServiceItem {
   id: string;
@@ -18,7 +18,7 @@ export const services: ServiceItem[] = [
     shortDescription: 'Alinhamento estrutural, recuperação de lataria e peças após colisões com ferramentas especializadas.',
     fullDescription: 'Reparação de amassados leves, médios e estruturais com foco na restauração precisa das linhas e medidas originais do veículo.',
     highlights: ['Recuperação de peças originais', 'Alinhamento com gabarito técnico', 'Atende todas as seguradoras'],
-    whatsappMessage: `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}\n\nGostaria de solicitar um orçamento para *Funilaria*.\n\nPodem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    whatsappMessage: WHATSAPP_TEMPLATES.service('Funilaria'),
   },
   {
     id: 'pintura',
@@ -27,7 +27,7 @@ export const services: ServiceItem[] = [
     shortDescription: 'Câmara de pintura profissional com acerto digital de cor e acabamento de alto padrão automotivo.',
     fullDescription: 'Aplicação técnica com controle de temperatura e pureza do ar na câmara de pintura própria, garantindo fidelidade de tonalidade e brilho uniforme.',
     highlights: ['Câmara pressurizada própria', 'Colorimetria precisa de fábrica', 'Acabamento uniforme sem impurezas'],
-    whatsappMessage: `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}\n\nGostaria de solicitar um orçamento para *Pintura*.\n\nPodem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    whatsappMessage: WHATSAPP_TEMPLATES.service('Pintura'),
   },
   {
     id: 'martelinho',
@@ -36,7 +36,7 @@ export const services: ServiceItem[] = [
     shortDescription: 'Técnica artesanal para desamassar pequenos impactos sem danificar a pintura original de fábrica.',
     fullDescription: 'Ideal para mossas de chuva de granizo, batidas de porta em estacionamento e pequenas ondulações, preservando a originalidade do carro.',
     highlights: ['Preserva a pintura original', 'Sem uso de massa plástica', 'Menor intervenção no veículo'],
-    whatsappMessage: `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}\n\nGostaria de solicitar um orçamento para *Martelinho*.\n\nPodem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    whatsappMessage: WHATSAPP_TEMPLATES.service('Martelinho'),
   },
   {
     id: 'revisao-preventiva',
@@ -45,6 +45,6 @@ export const services: ServiceItem[] = [
     shortDescription: 'Inspeção de pontos vitais do veículo com transparência e diagnóstico focado na segurança.',
     fullDescription: 'Avaliação criteriosa dos itens essenciais de desgaste, funcionamento mecânico e integridade visual para rodar com total tranquilidade.',
     highlights: ['Inspeção visual e de componentes', 'Diagnóstico transparente', 'Cuidado e segurança para a família'],
-    whatsappMessage: `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}\n\nGostaria de solicitar um orçamento para *Revisão preventiva*.\n\nPodem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    whatsappMessage: WHATSAPP_TEMPLATES.service('Revisão preventiva'),
   },
 ];

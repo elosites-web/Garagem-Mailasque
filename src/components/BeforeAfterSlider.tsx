@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Sparkles, MessageSquare, ChevronRight, Layers, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { BeforeAfterCase, beforeAfterCases } from '../data/beforeAfter';
-import { buildWhatsAppUrl, WHATSAPP_EMOJIS } from '../data/business';
+import { buildWhatsAppUrl, WHATSAPP_TEMPLATES } from '../data/business';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
@@ -123,20 +123,8 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
   const whatsappUrl = buildWhatsAppUrl({
     originSection: 'antes-depois',
     customText: activeCase
-      ? [
-          `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
-          '',
-          `Vi o caso de *${activeCase.title}* (${activeCase.vehicle}) no site e gostaria de solicitar um orçamento para o meu carro.`,
-          '',
-          `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
-        ].join('\n')
-      : [
-          `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
-          '',
-          'Vim pelo site e gostaria de ver fotos e exemplos de reparos recentes semelhantes ao do meu veículo.',
-          '',
-          `Poderiam me enviar, por favor? ${WHATSAPP_EMOJIS.smile}`,
-        ].join('\n'),
+      ? WHATSAPP_TEMPLATES.beforeAfterCase(activeCase.title, activeCase.vehicle)
+      : WHATSAPP_TEMPLATES.beforeAfterFallback(),
   });
 
   return (

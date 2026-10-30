@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CheckCircle2, AlertCircle, Wrench, Calendar, FileText } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { services } from '../data/services';
-import { buildWhatsAppUrl, WHATSAPP_EMOJIS } from '../data/business';
+import { buildWhatsAppUrl, WHATSAPP_TEMPLATES } from '../data/business';
 import { trackLeadSubmission } from '../utils/analytics';
 
 const DAMAGED_PARTS_OPTIONS = [
@@ -148,29 +148,15 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
 
     const partsString = selectedPartsList.length > 0 ? selectedPartsList.join(', ') : '';
 
-    // Monta a mensagem estruturada e amigável para o WhatsApp
-    const lines: string[] = [
-      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
-      '',
-      'Vim pelo site e gostaria de solicitar um orçamento.',
-      '',
-      `${WHATSAPP_EMOJIS.user} *Nome:* ${formData.name.trim()}`,
-      `${WHATSAPP_EMOJIS.tools} *Serviço:* ${formData.service}`,
-      `${WHATSAPP_EMOJIS.car} *Veículo:* ${formData.vehicle.trim()}${formData.vehicleYear.trim() ? ` (${formData.vehicleYear.trim()})` : ''}`,
-      `${WHATSAPP_EMOJIS.shield} *Seguro:* ${formData.isInsurance === 'Sim' ? 'Sim, por seguro' : 'Não, particular'}`,
-    ];
-
-    if (partsString) {
-      lines.push(`${WHATSAPP_EMOJIS.wrench} *Peças a reparar:* ${partsString}`);
-    }
-
-    if (formData.damageDescription.trim()) {
-      lines.push(`${WHATSAPP_EMOJIS.memo} *Detalhes:* ${formData.damageDescription.trim()}`);
-    }
-
-    lines.push('', `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`);
-
-    const customText = lines.join('\n');
+    const customText = WHATSAPP_TEMPLATES.quoteForm({
+      name: formData.name,
+      service: formData.service,
+      vehicle: formData.vehicle,
+      vehicleYear: formData.vehicleYear,
+      isInsurance: formData.isInsurance,
+      parts: partsString,
+      details: formData.damageDescription,
+    });
 
     const targetUrl = buildWhatsAppUrl({
       originSection: 'site-form',

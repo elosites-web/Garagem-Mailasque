@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { X, Send, ArrowDownRight } from 'lucide-react';
+import { X, Send, ArrowDownRight, CheckCheck } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
-import { businessData, buildWhatsAppUrl, isWorkshopOpenNow, WHATSAPP_EMOJIS } from '../data/business';
+import { buildWhatsAppUrl, isWorkshopOpenNow, WHATSAPP_EMOJIS, WHATSAPP_TEMPLATES } from '../data/business';
 import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 export const FloatingWhatsApp: React.FC = () => {
@@ -13,9 +13,56 @@ export const FloatingWhatsApp: React.FC = () => {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [messageInput, setMessageInput] = useState('');
   const [currentTimeStr, setCurrentTimeStr] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [outgoingBubbleText, setOutgoingBubbleText] = useState<string | null>(null);
 
   const bubbleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const sendTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const chatPanelRef = useRef<HTMLDivElement>(null);
+  const closeChatButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
+  const mainButtonRef = useRef<HTMLAnchorElement>(null);
+
+  /**
+   * Restaura o foco de forma determinística para o botão flutuante principal,
+   * evitando perda de foco para document.body durante o desmonte do AnimatePresence.
+   */
+  const focusMainButton = useCallback(() => {
+    mainButtonRef.current?.focus();
+    if (typeof window !== 'undefined' && 'requestAnimationFrame' in window) {
+      window.requestAnimationFrame(() => {
+        mainButtonRef.current?.focus();
+      });
+    }
+  }, []);
+
+  /**
+   * Fecha o painel de chat e devolve imediatamente o foco ao botão acionador principal.
+   */
+  const closeChatPanel = useCallback(
+    (restoreFocus = true) => {
+      if (sendTimerRef.current) {
+        clearTimeout(sendTimerRef.current);
+        sendTimerRef.current = null;
+      }
+      setIsSending(false);
+      setOutgoingBubbleText(null);
+      setIsChatOpen(false);
+      if (restoreFocus) {
+        focusMainButton();
+      }
+    },
+    [focusMainButton]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (sendTimerRef.current) {
+        clearTimeout(sendTimerRef.current);
+      }
+    };
+  }, []);
 
   // Monitora horário de atendimento a cada minuto
   useEffect(() => {
@@ -42,17 +89,18 @@ export const FloatingWhatsApp: React.FC = () => {
   }, [isChatOpen]);
 
   // Agenda exibição da bolha proativa: 60s inicial, 90s após fechamento
-  const scheduleBubble = (delayMs: number) => {
-    if (bubbleTimerRef.current) {
-      clearTimeout(bubbleTimerRef.current);
-    }
-    bubbleTimerRef.current = setTimeout(() => {
-      // Só exibe se o painel de chat não estiver aberto
-      setShowBubble((prev) => {
-        return !isChatOpen;
-      });
-    }, delayMs);
-  };
+  const scheduleBubble = useCallback(
+    (delayMs: number) => {
+      if (bubbleTimerRef.current) {
+        clearTimeout(bubbleTimerRef.current);
+      }
+      bubbleTimerRef.current = setTimeout(() => {
+        // Só exibe se o painel de chat não estiver aberto
+        setShowBubble(() => !isChatOpen);
+      }, delayMs);
+    },
+    [isChatOpen]
+  );
 
   useEffect(() => {
     // 60 segundos após o carregamento da página
@@ -63,7 +111,7 @@ export const FloatingWhatsApp: React.FC = () => {
         clearTimeout(bubbleTimerRef.current);
       }
     };
-  }, []);
+  }, [scheduleBubble]);
 
   // Foco no input ao abrir o painel de chat
   useEffect(() => {
@@ -72,53 +120,94 @@ export const FloatingWhatsApp: React.FC = () => {
       if (bubbleTimerRef.current) {
         clearTimeout(bubbleTimerRef.current);
       }
-      setTimeout(() => {
+      const focusTimer = setTimeout(() => {
         inputRef.current?.focus();
-      }, 150);
+      }, 50);
+      return () => clearTimeout(focusTimer);
     }
   }, [isChatOpen]);
 
-  // Tecla Escape para fechar chat
+  // Gerenciamento de teclado no painel de chat: Escape fecha e restaura foco; Tab mantém foco cíclico no modal
   useEffect(() => {
+    if (!isChatOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isChatOpen) {
-        setIsChatOpen(false);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeChatPanel(true);
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const rawElements: Array<HTMLElement | null> = [
+          closeChatButtonRef.current,
+          inputRef.current,
+          sendButtonRef.current,
+          mainButtonRef.current,
+        ];
+        const focusableElements = rawElements.filter((el): el is HTMLElement => el !== null);
+
+        if (focusableElements.length === 0) return;
+
+        const firstEl = focusableElements[0];
+        const lastEl = focusableElements[focusableElements.length - 1];
+        const activeEl = document.activeElement as HTMLElement | null;
+
+        if (e.shiftKey) {
+          if (!activeEl || activeEl === firstEl || !focusableElements.includes(activeEl)) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (!activeEl || activeEl === lastEl || !focusableElements.includes(activeEl)) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isChatOpen]);
+  }, [isChatOpen, closeChatPanel]);
 
-  // Fechar a bolha proativa pelo X e reagendar para 90s depois
-  const handleDismissBubble = (e: React.MouseEvent) => {
+  // Fechar a bolha proativa pelo X, restaurar foco se acionado via teclado e reagendar para 90s depois
+  const handleDismissBubble = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     setShowBubble(false);
     setHasInteracted(true);
     scheduleBubble(90000);
+    focusMainButton();
   };
 
-  // Clique na bolha proativa -> abre WhatsApp direto
+  // Clique ou ativação por teclado na bolha proativa -> abre WhatsApp direto
   const handleBubbleClick = () => {
     trackWhatsAppConversion('floating-bubble');
     setShowBubble(false);
     setHasInteracted(true);
     const url = buildWhatsAppUrl({
       originSection: 'balao-flutuante',
-      customText: [
-        `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
-        '',
-        'Vi o recado no site e gostaria de solicitar um orçamento para o meu veículo.',
-        '',
-        `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
-      ].join('\n'),
+      customText: WHATSAPP_TEMPLATES.floatingBubble(),
     });
     window.open(url, '_blank', 'noopener,noreferrer');
+    focusMainButton();
+  };
+
+  const handleBubbleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleBubbleClick();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleDismissBubble(e);
+    }
   };
 
   // Clique no botão flutuante principal (abre/fecha o widget interno, sem disparar evento de conversão)
   const handleMainButtonClick = () => {
     if (isChatOpen) {
-      setIsChatOpen(false);
+      closeChatPanel(true);
     } else {
       trackEvent('chat_widget_toggle', { section: 'floating-button', action: 'open' });
       setShowBubble(false);
@@ -127,41 +216,45 @@ export const FloatingWhatsApp: React.FC = () => {
     }
   };
 
-  // Envio de mensagem pelo formulário do painel de chat (abre o WhatsApp real)
+  // Envio de mensagem pelo formulário do painel de chat com feedback tátil e bolha flutuante de saída
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSending) return;
+
     const trimmed = messageInput.trim();
     trackWhatsAppConversion('floating-chat-send', {
       has_custom_message: Boolean(trimmed),
     });
 
-    const fallbackText = [
-      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
-      '',
-      'Vim pelo site e gostaria de tirar uma dúvida sobre funilaria e pintura.',
-      '',
-      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
-    ].join('\n');
+    const fallbackText = WHATSAPP_TEMPLATES.floatingChatFallback();
+    const previewText =
+      trimmed || 'Olá, Garagem Mailasque! Vim pelo site e gostaria de tirar uma dúvida sobre funilaria e pintura.';
 
     const url = buildWhatsAppUrl({
       originSection: 'chat-flutuante',
       customText: trimmed || fallbackText,
     });
 
-    window.open(url, '_blank', 'noopener,noreferrer');
+    setIsSending(true);
+    setOutgoingBubbleText(previewText);
     setMessageInput('');
-    setIsChatOpen(false);
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+
+    if (sendTimerRef.current) {
+      clearTimeout(sendTimerRef.current);
+    }
+    sendTimerRef.current = setTimeout(
+      () => {
+        closeChatPanel(true);
+      },
+      shouldReduceMotion ? 160 : 520
+    );
   };
 
   const defaultWhatsAppUrl = buildWhatsAppUrl({
     originSection: 'botao-flutuante',
-    customText: [
-      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
-      '',
-      'Vim pelo site e gostaria de solicitar um orçamento para funilaria e pintura.',
-      '',
-      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
-    ].join('\n'),
+    customText: WHATSAPP_TEMPLATES.floatingButtonDefault(),
   });
 
   return (
@@ -173,6 +266,8 @@ export const FloatingWhatsApp: React.FC = () => {
       <AnimatePresence>
         {isChatOpen && (
           <motion.div
+            ref={chatPanelRef}
+            id="whatsapp-chat-panel"
             key="whatsapp-chat-panel"
             initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -225,9 +320,10 @@ export const FloatingWhatsApp: React.FC = () => {
               </div>
 
               <button
+                ref={closeChatButtonRef}
                 type="button"
-                onClick={() => setIsChatOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors focus-visible:outline-2 focus-visible:outline-white"
+                onClick={() => closeChatPanel(true)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#075E54] focus-visible:bg-white/20 focus-visible:text-white"
                 aria-label="Fechar janela de conversa"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
@@ -235,7 +331,7 @@ export const FloatingWhatsApp: React.FC = () => {
             </div>
 
             {/* Área de Mensagens com visual temático WhatsApp */}
-            <div className="p-4 bg-[#0B141A] min-h-[160px] max-h-[220px] overflow-y-auto space-y-3">
+            <div className="p-4 bg-[#0B141A] min-h-[160px] max-h-[240px] overflow-y-auto space-y-3 relative">
               <div className="flex justify-center">
                 <span className="text-[10px] uppercase font-bold text-neutral-400 bg-neutral-900/80 px-2.5 py-1 rounded-full border border-neutral-800">
                   Canal Oficial de Atendimento
@@ -245,7 +341,7 @@ export const FloatingWhatsApp: React.FC = () => {
               {/* Balão de Mensagem de Boas-Vindas */}
               <div className="relative max-w-[85%] bg-[#202C33] text-neutral-100 rounded-2xl rounded-tl-sm px-3.5 py-2.5 shadow-md border border-neutral-700/50">
                 <p className="text-xs leading-relaxed">
-                  Olá! Seja muito bem-vindo à <strong className="text-white">Garagem Mailasque</strong>. 👋
+                  Olá! Seja muito bem-vindo à <strong className="text-white">Garagem Mailasque</strong>. {WHATSAPP_EMOJIS.wave}
                 </p>
                 <p className="text-xs leading-relaxed mt-1.5 text-neutral-300">
                   Como podemos ajudar com a funilaria ou pintura do seu carro hoje? Digite sua dúvida ou peça seu orçamento abaixo:
@@ -254,60 +350,161 @@ export const FloatingWhatsApp: React.FC = () => {
                   {currentTimeStr}
                 </span>
               </div>
+
+              {/* Bolha de Mensagem Enviada Flutuando da Área de Texto para a Conversa */}
+              <AnimatePresence>
+                {outgoingBubbleText && (
+                  <motion.div
+                    key="outgoing-floating-message"
+                    initial={
+                      shouldReduceMotion
+                        ? { opacity: 0 }
+                        : { opacity: 0, y: 28, x: 8, scale: 0.9 }
+                    }
+                    animate={
+                      shouldReduceMotion
+                        ? { opacity: 1 }
+                        : {
+                            opacity: [0, 1, 1, 0.92],
+                            y: [28, 0, -6],
+                            x: [8, 0, 0],
+                            scale: [0.9, 1.02, 1],
+                          }
+                    }
+                    exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -14, scale: 0.95 }}
+                    transition={{
+                      duration: shouldReduceMotion ? 0.12 : 0.46,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    style={{ transformOrigin: 'bottom right' }}
+                    className="ml-auto max-w-[85%] bg-[#005C4B] text-white rounded-2xl rounded-tr-sm px-3.5 py-2 shadow-lg border border-[#25D366]/30 pointer-events-none"
+                    aria-live="polite"
+                  >
+                    <p className="text-xs leading-relaxed break-words line-clamp-2">
+                      {outgoingBubbleText}
+                    </p>
+                    <span className="mt-1 flex items-center justify-end gap-1 text-[10px] text-white/75 tabular-nums">
+                      <span>{currentTimeStr}</span>
+                      <CheckCheck className="w-3.5 h-3.5 text-[#53BDEB] shrink-0" aria-hidden="true" />
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Rodapé / Input de Mensagem */}
             <form onSubmit={handleSendMessage} className="p-3 bg-[#1F2C34] border-t border-neutral-700/50 flex items-center gap-2">
-              <input
+              <motion.input
                 ref={inputRef}
                 type="text"
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
-                placeholder="Digite sua mensagem aqui..."
-                className="flex-1 bg-[#2A3942] text-white text-xs px-3.5 py-2.5 rounded-full placeholder-neutral-400 border border-transparent focus:border-[#25D366] focus:outline-none transition-colors"
+                placeholder={isSending ? 'Enviando para o WhatsApp...' : 'Digite sua mensagem aqui...'}
+                aria-label="Digite sua mensagem para o WhatsApp"
+                animate={
+                  isSending && !shouldReduceMotion
+                    ? { scale: [1, 0.985, 1] }
+                    : { scale: 1 }
+                }
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="flex-1 bg-[#2A3942] text-white text-xs px-3.5 py-2.5 rounded-full placeholder-neutral-300 border border-white/15 focus:border-[#25D366] focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F2C34] transition-colors"
               />
-              <button
+              <motion.button
+                ref={sendButtonRef}
                 type="submit"
-                className="w-9 h-9 rounded-full bg-[#00A884] hover:bg-[#02906f] text-white flex items-center justify-center shrink-0 transition-transform active:scale-90 focus-visible:outline-2 focus-visible:outline-[#25D366] shadow-md"
+                disabled={isSending}
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.88 }}
+                animate={
+                  isSending
+                    ? shouldReduceMotion
+                      ? { backgroundColor: '#25D366' }
+                      : {
+                          scale: [1, 0.86, 1.14, 1],
+                          backgroundColor: ['#00A884', '#25D366', '#10B981', '#00A884'],
+                          boxShadow: [
+                            '0 4px 6px rgba(0,0,0,0.3)',
+                            '0 0 18px rgba(37,211,102,0.75)',
+                            '0 4px 6px rgba(0,0,0,0.3)',
+                          ],
+                        }
+                    : {
+                        scale: 1,
+                        backgroundColor: '#00A884',
+                      }
+                }
+                transition={{
+                  duration: shouldReduceMotion ? 0.12 : 0.42,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="w-9 h-9 rounded-full bg-[#00A884] hover:bg-[#02906f] text-white flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1F2C34] shadow-md overflow-hidden cursor-pointer disabled:cursor-default"
                 aria-label="Enviar mensagem no WhatsApp"
               >
-                <Send className="w-4 h-4 ml-0.5" aria-hidden="true" />
-              </button>
+                <motion.span
+                  animate={
+                    isSending && !shouldReduceMotion
+                      ? {
+                          x: [0, 10, -8, 0],
+                          y: [0, -10, 8, 0],
+                          opacity: [1, 0, 0, 1],
+                          scale: [1, 0.8, 0.8, 1],
+                        }
+                      : { x: 0, y: 0, opacity: 1, scale: 1 }
+                  }
+                  transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex items-center justify-center"
+                >
+                  <Send className="w-4 h-4 ml-0.5" aria-hidden="true" />
+                </motion.span>
+              </motion.button>
             </form>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 2. Bolha de Mensagem Proativa (textos centralizados e entrada elástica orgânica) */}
+      {/* 2. Bolha de Mensagem Proativa (fade-in com deslize vertical orgânico no canto da tela) */}
       <AnimatePresence>
         {showBubble && !isChatOpen && (
           <motion.div
             id="whatsapp-proactive-bubble"
             key="whatsapp-proactive-bubble"
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.94 }}
+            role="button"
+            tabIndex={0}
+            aria-label="Olá. Precisa de um orçamento para funilaria ou pintura? Falar no WhatsApp"
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.96 }}
-            transition={{
-              duration: shouldReduceMotion ? 0 : 0.45,
-              ease: [0.34, 1.56, 0.64, 1],
-            }}
+            exit={
+              shouldReduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: 12, scale: 0.97, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }
+            }
+            transition={
+              shouldReduceMotion
+                ? { duration: 0.15 }
+                : {
+                    type: 'spring',
+                    stiffness: 360,
+                    damping: 26,
+                    mass: 0.85,
+                    opacity: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+                  }
+            }
+            style={{ transformOrigin: 'bottom right' }}
             onClick={handleBubbleClick}
-            className="whatsapp-proactive-bubble pointer-events-auto relative mb-3 w-[270px] sm:w-[290px] rounded-2xl bg-[#141414]/95 backdrop-blur-md text-white p-3.5 shadow-xl shadow-black/60 border border-white/10 hover:border-[#25D366]/40 cursor-pointer group transition-all text-center"
-            role="alert"
-            aria-live="polite"
+            onKeyDown={handleBubbleKeyDown}
+            className="whatsapp-proactive-bubble pointer-events-auto relative mb-3 w-[270px] sm:w-[290px] rounded-2xl bg-[#141414]/95 backdrop-blur-md text-white p-3.5 shadow-xl shadow-black/60 border border-white/10 hover:border-[#25D366]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E0E0E] focus-visible:border-[#25D366] cursor-pointer group transition-[border-color,box-shadow] duration-300 text-center"
           >
             {/* Botão de Fechar Minimalista (X) */}
             <button
               type="button"
               onClick={handleDismissBubble}
-              className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#25D366]"
+              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full text-neutral-300 hover:text-white hover:bg-white/15 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#141414] focus-visible:bg-white/20 focus-visible:text-white"
               aria-label="Fechar recado do WhatsApp"
             >
-              <X className="w-3 h-3" aria-hidden="true" />
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
 
             {/* Conteúdo Centralizado */}
-            <div className="flex flex-col items-center text-center px-1">
+            <div className="flex flex-col items-center text-center px-1" aria-live="polite">
               {/* Topo: Avatar + Nome da Oficina + Status Online (alinhado à esquerda) */}
               <div className="w-full flex items-center justify-start gap-1.5 mb-1">
                 <div className="relative shrink-0">
@@ -326,7 +523,7 @@ export const FloatingWhatsApp: React.FC = () => {
                     }`}
                   />
                 </div>
-                <span className="text-xs font-semibold text-white hover:text-[#F97316] transition-colors">
+                <span className="text-xs font-semibold text-white group-hover:text-[#F97316] transition-colors">
                   Garagem Mailasque
                 </span>
                 {isOnline ? (
@@ -363,6 +560,8 @@ export const FloatingWhatsApp: React.FC = () => {
 
         {/* Botão de Ação Principal: Bola verde oficial com logotipo do WhatsApp em branco */}
         <a
+          ref={mainButtonRef}
+          id="whatsapp-floating-main-btn"
           href={defaultWhatsAppUrl}
           role="button"
           tabIndex={0}
@@ -376,9 +575,10 @@ export const FloatingWhatsApp: React.FC = () => {
               handleMainButtonClick();
             }
           }}
-          className="whatsapp-floating-action-btn whatsapp-gradient-pulse-btn group relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full text-white shadow-xl hover:shadow-2xl active:scale-95 focus-visible:outline-2 focus-visible:outline-white cursor-pointer"
+          className="whatsapp-floating-action-btn whatsapp-gradient-pulse-btn group relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full text-white shadow-xl hover:shadow-2xl active:scale-95 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E0E0E] cursor-pointer"
           aria-expanded={isChatOpen}
-          aria-label={isChatOpen ? "Fechar atendimento no WhatsApp" : "Abrir atendimento da Garagem Mailasque no WhatsApp"}
+          aria-controls={isChatOpen ? 'whatsapp-chat-panel' : undefined}
+          aria-label={isChatOpen ? 'Fechar atendimento no WhatsApp' : 'Abrir atendimento da Garagem Mailasque no WhatsApp'}
         >
           {/* Badge saltitante de notificação '1' */}
           {!hasInteracted && !isChatOpen && (

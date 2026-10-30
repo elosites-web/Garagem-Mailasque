@@ -1,3 +1,7 @@
+import { WHATSAPP_EMOJIS } from '../utils/whatsappEmojis';
+
+export { WHATSAPP_EMOJIS };
+
 /**
  * Fonte única da URL canônica do site em produção.
  * Lê de VITE_SITE_URL com fallback para https://www.garagemmailasque.com.br
@@ -230,52 +234,176 @@ export function isWorkshopOpenNow(): boolean {
   }
 }
 
-/**
- * Dicionário seguro de emojis em escapes de code points Unicode ECMAScript 6 (\u{...})
- * para prevenir integralmente corrupção de caracteres (U+FFFD ) por discrepâncias de charset em arquivos/compilações.
- */
-export const WHATSAPP_EMOJIS = {
-  wave: '\u{1F44B}',        // 👋 Waving hand
-  smile: '\u{1F60A}',       // 😊 Smiling face with smiling eyes
-  user: '\u{1F464}',        // 👤 Bust in silhouette
-  tools: '\u{1F6E0}\uFE0F', // 🛠️ Hammer and wrench
-  car: '\u{1F697}',         // 🚗 Automobile
-  shield: '\u{1F6E1}\uFE0F',// 🛡️ Shield
-  wrench: '\u{1F527}',      // 🔧 Wrench
-  memo: '\u{1F4DD}',        // 📝 Memo
-} as const;
+export interface QuoteFormMessageParams {
+  name: string;
+  service: string;
+  vehicle: string;
+  vehicleYear?: string;
+  isInsurance: string | boolean;
+  parts?: string;
+  details?: string;
+}
 
 /**
- * Função utilitária para gerar links do WhatsApp padronizados.
- * Utiliza a API padrão URL e URLSearchParams para codificação UTF-8 precisa de parâmetro único,
- * preservando quebras de linha reais (\n), negrito WhatsApp (*texto*), emojis e SEM vazamento de identificadores internos.
+ * Templates oficiais de mensagens predefinidas para todos os CTAs de WhatsApp do site.
  */
-export function buildWhatsAppUrl(options: {
+export const WHATSAPP_TEMPLATES = {
+  general: (): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vim pelo site e gostaria de solicitar um orçamento.',
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  service: (serviceName: string): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      `Gostaria de solicitar um orçamento para *${serviceName}*.`,
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  floatingBubble: (): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vi o recado no site e gostaria de solicitar um orçamento para o meu veículo.',
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  floatingChatFallback: (): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vim pelo site e gostaria de tirar uma dúvida sobre funilaria e pintura.',
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  floatingButtonDefault: (): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vim pelo site e gostaria de solicitar um orçamento para funilaria e pintura.',
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  insurers: (): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Acionei o sinistro pelo seguro e gostaria de orientações para consertar meu carro na oficina de vocês.',
+      '',
+      `Como podemos proceder? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  partnerApvs: (): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Gostaria de mais informações sobre a proteção veicular *APVS Brasil* na oficina.',
+      '',
+      `Poderiam me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  paymentSimulator: (formattedValue: string): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      `Fiz uma simulação de referência no site no valor de *${formattedValue}*.`,
+      '',
+      'Gostaria de agendar uma avaliação para o meu veículo.',
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  beforeAfterCase: (title: string, vehicle: string): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      `Vi o caso de *${title}* (${vehicle}) no site e gostaria de solicitar um orçamento para o meu carro.`,
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  beforeAfterFallback: (): string =>
+    [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vim pelo site e gostaria de ver fotos e exemplos de reparos recentes semelhantes ao do meu veículo.',
+      '',
+      `Poderiam me enviar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
+
+  quoteForm: (params: QuoteFormMessageParams): string => {
+    const seguroStr =
+      typeof params.isInsurance === 'boolean'
+        ? params.isInsurance
+          ? 'Sim, por seguro'
+          : 'Não, particular'
+        : params.isInsurance === 'Sim' || params.isInsurance === 'Sim, por seguro'
+          ? 'Sim, por seguro'
+          : 'Não, particular';
+
+    const lines: string[] = [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vim pelo site e gostaria de solicitar um orçamento.',
+      '',
+      `${WHATSAPP_EMOJIS.user} *Nome:* ${params.name.trim()}`,
+      `${WHATSAPP_EMOJIS.tools} *Serviço:* ${params.service}`,
+      `${WHATSAPP_EMOJIS.car} *Veículo:* ${params.vehicle.trim()}${params.vehicleYear?.trim() ? ` (${params.vehicleYear.trim()})` : ''}`,
+      `${WHATSAPP_EMOJIS.shield} *Seguro:* ${seguroStr}`,
+    ];
+
+    if (params.parts?.trim()) {
+      lines.push(`${WHATSAPP_EMOJIS.wrench} *Peças a reparar:* ${params.parts.trim()}`);
+    }
+
+    if (params.details?.trim()) {
+      lines.push(`${WHATSAPP_EMOJIS.memo} *Detalhes:* ${params.details.trim()}`);
+    }
+
+    lines.push('', `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`);
+    return lines.join('\n');
+  },
+} as const;
+
+export interface WhatsAppUrlOptions {
   originSection?: string;
   service?: string;
   vehicle?: string;
   isInsurance?: boolean | string;
   customText?: string;
-}): string {
-  const url = new URL(`https://wa.me/${businessData.phoneRaw}`);
+}
 
+/**
+ * Constrói a mensagem de texto original do WhatsApp antes da codificação na URL.
+ */
+export function buildWhatsAppMessage(options: WhatsAppUrlOptions = {}): string {
   // 1. Mensagem personalizada explícita fornecida pela chamada
   if (options.customText && options.customText.trim()) {
-    url.searchParams.set('text', options.customText.trim());
-    return url.toString();
+    return options.customText.trim();
   }
 
-  // 2. Mensagem gerada dinamicamente baseada nos parâmetros informados
-  const lines: string[] = [`Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`, ''];
-
+  // 2. Caso de CTA direto de serviço especializado (ex.: Funilaria, Pintura, Martelinho, Revisão preventiva)
   if (options.service && !options.vehicle && (options.isInsurance === undefined || options.isInsurance === '')) {
-    // Caso de CTA direto de serviço especializado (ex.: Funilaria, Pintura, Martelinho)
-    lines.push(`Gostaria de solicitar um orçamento para *${options.service}*.`);
-    lines.push('', `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`);
-  } else if (options.service || options.vehicle || (options.isInsurance !== undefined && options.isInsurance !== '')) {
-    // Caso com parâmetros múltiplos de veículo ou seguro
-    lines.push('Vim pelo site e gostaria de solicitar um orçamento:');
-    lines.push('');
+    return WHATSAPP_TEMPLATES.service(options.service);
+  }
+
+  // 3. Caso com parâmetros múltiplos de veículo ou seguro
+  if (options.service || options.vehicle || (options.isInsurance !== undefined && options.isInsurance !== '')) {
+    const lines: string[] = [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vim pelo site e gostaria de solicitar um orçamento:',
+      '',
+    ];
     if (options.service) {
       lines.push(`${WHATSAPP_EMOJIS.tools} *Serviço:* ${options.service}`);
     }
@@ -283,19 +411,30 @@ export function buildWhatsAppUrl(options: {
       lines.push(`${WHATSAPP_EMOJIS.car} *Veículo:* ${options.vehicle}`);
     }
     if (options.isInsurance !== undefined && options.isInsurance !== '') {
-      const seguroStr = typeof options.isInsurance === 'boolean'
-        ? (options.isInsurance ? 'Sim, por seguro' : 'Não, particular')
-        : String(options.isInsurance);
+      const seguroStr =
+        typeof options.isInsurance === 'boolean'
+          ? options.isInsurance
+            ? 'Sim, por seguro'
+            : 'Não, particular'
+          : String(options.isInsurance);
       lines.push(`${WHATSAPP_EMOJIS.shield} *Seguro:* ${seguroStr}`);
     }
     lines.push('', `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`);
-  } else {
-    // Mensagem geral de orçamento padrão (Hero, Header, Footer)
-    lines.push('Vim pelo site e gostaria de solicitar um orçamento.');
-    lines.push('', `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`);
+    return lines.join('\n');
   }
 
-  const fullText = lines.join('\n');
+  // 4. Mensagem geral de orçamento padrão (Hero, Header, Footer, Mobile Drawer)
+  return WHATSAPP_TEMPLATES.general();
+}
+
+/**
+ * Função utilitária para gerar links do WhatsApp padronizados.
+ * Utiliza a API padrão URL e URLSearchParams para codificação UTF-8 precisa de parâmetro único,
+ * preservando quebras de linha reais (\n), negrito WhatsApp (*texto*), emojis e SEM vazamento de identificadores internos.
+ */
+export function buildWhatsAppUrl(options: WhatsAppUrlOptions = {}): string {
+  const url = new URL(`https://wa.me/${businessData.phoneRaw}`);
+  const fullText = buildWhatsAppMessage(options);
   url.searchParams.set('text', fullText);
   return url.toString();
 }
