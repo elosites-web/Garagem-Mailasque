@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, CheckCircle, FileText, ArrowRight } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
-import { businessData, buildWhatsAppUrl } from '../data/business';
+import { businessData, buildWhatsAppUrl, WHATSAPP_EMOJIS } from '../data/business';
 import { trackWhatsAppConversion } from '../utils/analytics';
 
 export const Insurers: React.FC = () => {
@@ -71,7 +71,13 @@ export const Insurers: React.FC = () => {
                 <a
                   href={buildWhatsAppUrl({
                     originSection: 'site-seguradoras',
-                    customText: 'Olá, Garagem Mailasque! Fiz sinistro pelo seguro, como funciona para consertar meu carro com vocês?',
+                    customText: [
+                      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+                      '',
+                      'Acionei o sinistro pelo seguro e gostaria de orientações para consertar meu carro na oficina de vocês.',
+                      '',
+                      `Como podemos proceder? ${WHATSAPP_EMOJIS.smile}`,
+                    ].join('\n'),
                   })}
                   target="_blank"
                   rel="noopener noreferrer"

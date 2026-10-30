@@ -1,7 +1,6 @@
 import React from 'react';
-import { ShieldCheck } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
-import { businessData, buildWhatsAppUrl } from '../data/business';
+import { businessData, buildWhatsAppUrl, WHATSAPP_EMOJIS } from '../data/business';
 import { trackWhatsAppConversion } from '../utils/analytics';
 
 export const PartnerApvs: React.FC = () => {
@@ -60,7 +59,13 @@ export const PartnerApvs: React.FC = () => {
                 <a
                   href={buildWhatsAppUrl({
                     originSection: 'site-parceria-apvs',
-                    customText: 'Olá, Garagem Mailasque! Gostaria de mais informações sobre o ponto de atendimento da APVS Brasil na oficina.',
+                    customText: [
+                      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+                      '',
+                      'Gostaria de mais informações sobre a proteção veicular *APVS Brasil* na oficina.',
+                      '',
+                      `Poderiam me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+                    ].join('\n'),
                   })}
                   target="_blank"
                   rel="noopener noreferrer"

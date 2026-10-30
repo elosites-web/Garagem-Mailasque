@@ -231,38 +231,71 @@ export function isWorkshopOpenNow(): boolean {
 }
 
 /**
- * Função utilitária para gerar links do WhatsApp padronizados
- * com parâmetros de origem para rastreamento interno do cliente
+ * Dicionário seguro de emojis em escapes de code points Unicode ECMAScript 6 (\u{...})
+ * para prevenir integralmente corrupção de caracteres (U+FFFD ) por discrepâncias de charset em arquivos/compilações.
+ */
+export const WHATSAPP_EMOJIS = {
+  wave: '\u{1F44B}',        // 👋 Waving hand
+  smile: '\u{1F60A}',       // 😊 Smiling face with smiling eyes
+  user: '\u{1F464}',        // 👤 Bust in silhouette
+  tools: '\u{1F6E0}\uFE0F', // 🛠️ Hammer and wrench
+  car: '\u{1F697}',         // 🚗 Automobile
+  shield: '\u{1F6E1}\uFE0F',// 🛡️ Shield
+  wrench: '\u{1F527}',      // 🔧 Wrench
+  memo: '\u{1F4DD}',        // 📝 Memo
+} as const;
+
+/**
+ * Função utilitária para gerar links do WhatsApp padronizados.
+ * Utiliza a API padrão URL e URLSearchParams para codificação UTF-8 precisa de parâmetro único,
+ * preservando quebras de linha reais (\n), negrito WhatsApp (*texto*), emojis e SEM vazamento de identificadores internos.
  */
 export function buildWhatsAppUrl(options: {
-  originSection: string;
+  originSection?: string;
   service?: string;
   vehicle?: string;
   isInsurance?: boolean | string;
   customText?: string;
 }): string {
-  if (options.customText) {
-    const text = `${options.customText} [${options.originSection}]`;
-    return `https://wa.me/${businessData.phoneRaw}?text=${encodeURIComponent(text)}`;
+  const url = new URL(`https://wa.me/${businessData.phoneRaw}`);
+
+  // 1. Mensagem personalizada explícita fornecida pela chamada
+  if (options.customText && options.customText.trim()) {
+    url.searchParams.set('text', options.customText.trim());
+    return url.toString();
   }
 
-  const parts = ['Olá, Garagem Mailasque! Vim pelo site e quero um orçamento.'];
-  
-  if (options.service) {
-    parts.push(`Serviço desejado: ${options.service}.`);
-  }
-  if (options.vehicle) {
-    parts.push(`Meu carro: ${options.vehicle}.`);
-  }
-  if (options.isInsurance !== undefined && options.isInsurance !== '') {
-    const seguroStr = typeof options.isInsurance === 'boolean' 
-      ? (options.isInsurance ? 'Sim' : 'Não') 
-      : String(options.isInsurance);
-    parts.push(`Seguro: ${seguroStr}.`);
+  // 2. Mensagem gerada dinamicamente baseada nos parâmetros informados
+  const lines: string[] = [`Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`, ''];
+
+  if (options.service && !options.vehicle && (options.isInsurance === undefined || options.isInsurance === '')) {
+    // Caso de CTA direto de serviço especializado (ex.: Funilaria, Pintura, Martelinho)
+    lines.push(`Gostaria de solicitar um orçamento para *${options.service}*.`);
+    lines.push('', `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`);
+  } else if (options.service || options.vehicle || (options.isInsurance !== undefined && options.isInsurance !== '')) {
+    // Caso com parâmetros múltiplos de veículo ou seguro
+    lines.push('Vim pelo site e gostaria de solicitar um orçamento:');
+    lines.push('');
+    if (options.service) {
+      lines.push(`${WHATSAPP_EMOJIS.tools} *Serviço:* ${options.service}`);
+    }
+    if (options.vehicle) {
+      lines.push(`${WHATSAPP_EMOJIS.car} *Veículo:* ${options.vehicle}`);
+    }
+    if (options.isInsurance !== undefined && options.isInsurance !== '') {
+      const seguroStr = typeof options.isInsurance === 'boolean'
+        ? (options.isInsurance ? 'Sim, por seguro' : 'Não, particular')
+        : String(options.isInsurance);
+      lines.push(`${WHATSAPP_EMOJIS.shield} *Seguro:* ${seguroStr}`);
+    }
+    lines.push('', `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`);
+  } else {
+    // Mensagem geral de orçamento padrão (Hero, Header, Footer)
+    lines.push('Vim pelo site e gostaria de solicitar um orçamento.');
+    lines.push('', `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`);
   }
 
-  parts.push(`[${options.originSection}]`);
-
-  const fullText = parts.join(' ');
-  return `https://wa.me/${businessData.phoneRaw}?text=${encodeURIComponent(fullText)}`;
+  const fullText = lines.join('\n');
+  url.searchParams.set('text', fullText);
+  return url.toString();
 }

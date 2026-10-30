@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Menu, X } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { businessData, buildWhatsAppUrl } from '../data/business';
@@ -8,103 +8,217 @@ interface HeaderProps {
   onOpenQuoteModal?: () => void;
 }
 
+export const CANONICAL_SECTIONS = [
+  'inicio',
+  'servicos',
+  'antes-e-depois',
+  'seguradoras',
+  'como-funciona',
+  'galeria',
+  'avaliacoes',
+  'condicoes',
+  'parceria-apvs',
+  'orcamento',
+  'faq',
+  'localizacao',
+  'contato',
+] as const;
+
+export const SECTION_MAP: Record<string, string> = {
+  hero: 'inicio',
+  'servicos-oficina': 'servicos',
+  'antes-e-depois': 'servicos', // Comparador antes/depois é extensão direta dos serviços
+  sinistro: 'seguradoras',
+  processo: 'como-funciona',
+  fotos: 'galeria',
+  depoimentos: 'avaliacoes',
+  'condicoes-pagamento': 'condicoes',
+  pagamento: 'condicoes',
+  apvs: 'parceria-apvs',
+  cotacao: 'orcamento',
+  duvidas: 'faq',
+  'onde-estamos': 'localizacao',
+  mapa: 'localizacao',
+  rodape: 'contato',
+};
+
+export interface SectionRect {
+  id: string;
+  top: number;
+  bottom: number;
+  height: number;
+}
+
+/**
+ * Função pura e determinística para detectar a seção ativa baseada na geometria real do viewport
+ */
+export function detectActiveSection(params: {
+  scrollY: number;
+  viewportHeight: number;
+  documentHeight: number;
+  headerHeight: number;
+  sectionRects: SectionRect[];
+}): string {
+  const { scrollY, viewportHeight, documentHeight, headerHeight, sectionRects } = params;
+
+  // 1. Topo da página: início
+  if (scrollY <= 50) {
+    return 'inicio';
+  }
+
+  // 2. Fim absoluto da página: avalia contato (rodapé) vs localizacao
+  const isAtBottom = viewportHeight + scrollY >= documentHeight - 30;
+  if (isAtBottom) {
+    const contato = sectionRects.find((s) => s.id === 'contato');
+    if (contato && contato.top <= viewportHeight * 0.65) {
+      return 'contato';
+    }
+    const localizacao = sectionRects.find((s) => s.id === 'localizacao');
+    if (localizacao && localizacao.bottom > headerHeight + 40) {
+      return 'localizacao';
+    }
+  }
+
+  // 3. Linha focal de leitura (logo abaixo do header fixo)
+  const readingLine = headerHeight + Math.min(100, (viewportHeight - headerHeight) * 0.25);
+
+  // Procura qual seção intercepta a linha focal de leitura
+  for (const s of sectionRects) {
+    if (s.top <= readingLine && s.bottom > readingLine) {
+      return SECTION_MAP[s.id] || s.id;
+    }
+  }
+
+  // Fallback: seção com maior área visível no viewport (excluindo header)
+  let bestId = 'inicio';
+  let maxVisible = -1;
+
+  for (const s of sectionRects) {
+    const visibleTop = Math.max(headerHeight, s.top);
+    const visibleBottom = Math.min(viewportHeight, s.bottom);
+    const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+    if (visibleHeight > maxVisible) {
+      maxVisible = visibleHeight;
+      bestId = s.id;
+    }
+  }
+
+  return SECTION_MAP[bestId] || bestId;
+}
+
+/**
+ * Rola a página até a seção alvo compensando com precisão a altura do cabeçalho fixo
+ */
+export function scrollToSection(targetId: string, behavior: ScrollBehavior = 'smooth'): void {
+  if (typeof window === 'undefined') return;
+
+  if (targetId === '' || targetId === 'inicio' || targetId === 'hero') {
+    window.scrollTo({ top: 0, behavior });
+    return;
+  }
+
+  const targetEl = document.getElementById(targetId);
+  if (!targetEl) return;
+
+  const headerEl = document.querySelector('header');
+  const headerHeight = headerEl ? headerEl.offsetHeight : 80;
+  const rect = targetEl.getBoundingClientRect();
+  const absoluteTop = rect.top + window.scrollY;
+  // Margem de respiro de 2px para que o topo do elemento não fique sob a borda do header
+  const targetScrollTop = Math.max(0, absoluteTop - headerHeight + 2);
+
+  window.scrollTo({
+    top: targetScrollTop,
+    behavior,
+  });
+}
+
 export const Header: React.FC<HeaderProps> = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('inicio');
 
+  // Atualização determinística do scrollspy via getBoundingClientRect (imune a offsetParent)
+  const updateScrollSpy = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    const scrollY = window.scrollY;
+    const viewportHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    const headerEl = document.querySelector('header');
+    const headerHeight = headerEl ? headerEl.offsetHeight : 80;
+
+    const sectionRects: SectionRect[] = [];
+    for (const id of CANONICAL_SECTIONS) {
+      const el = document.getElementById(id);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        sectionRects.push({ id, top: rect.top, bottom: rect.bottom, height: rect.height });
+      }
+    }
+
+    const detected = detectActiveSection({
+      scrollY,
+      viewportHeight,
+      documentHeight,
+      headerHeight,
+      sectionRects,
+    });
+
+    setActiveSection((prev) => (prev === detected ? prev : detected));
+  }, []);
+
+  // Monitora rolagem e redimensionamento da janela de forma otimizada com requestAnimationFrame
   useEffect(() => {
     let ticking = false;
-    const handleScroll = () => {
+
+    const onScrollOrResize = () => {
       if (!ticking) {
         requestAnimationFrame(() => {
           setIsScrolled(window.scrollY > 20);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Monitora a seção ativa com base na rolagem
-  useEffect(() => {
-    const sectionIds = [
-      'inicio',
-      'servicos',
-      'antes-e-depois',
-      'seguradoras',
-      'como-funciona',
-      'galeria',
-      'avaliacoes',
-      'condicoes',
-      'parceria-apvs',
-      'orcamento',
-      'faq',
-      'localizacao',
-      'contato',
-    ];
-
-    let ticking = false;
-    const handleScrollSpy = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60) {
-            setActiveSection('localizacao');
-            ticking = false;
-            return;
-          }
-
-          const scrollPosition = window.scrollY + 130;
-          let current = 'inicio';
-
-          for (const id of sectionIds) {
-            const el = document.getElementById(id);
-            if (el) {
-              const top = el.offsetTop;
-              if (scrollPosition >= top) {
-                current = id;
-              }
-            }
-          }
-          setActiveSection(current);
+          updateScrollSpy();
           ticking = false;
         });
         ticking = true;
       }
     };
 
-    window.addEventListener('scroll', handleScrollSpy, { passive: true });
-    handleScrollSpy();
-    return () => window.removeEventListener('scroll', handleScrollSpy);
-  }, []);
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize, { passive: true });
 
-  // Suporte a âncora inicial na URL (deep-linking) e evento hashchange
+    // Verificação inicial na montagem
+    onScrollOrResize();
+
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [updateScrollSpy]);
+
+  // Suporte a âncora inicial na URL (deep-linking), hashchange e popstate
   useEffect(() => {
     const handleHashNavigation = () => {
       const hash = window.location.hash;
       if (hash) {
         const targetId = hash.replace('#', '');
-        if (targetId === 'inicio' || targetId === 'hero') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+        const canonicalId = SECTION_MAP[targetId] || targetId;
+        setActiveSection(canonicalId);
+        scrollToSection(targetId);
+      } else {
+        if (window.scrollY < 100) {
           setActiveSection('inicio');
-        } else {
-          const targetEl = document.getElementById(targetId);
-          if (targetEl) {
-            targetEl.scrollIntoView({ behavior: 'smooth' });
-            setActiveSection(targetId);
-          }
         }
       }
     };
 
-    // Pequeno atraso para aguardar montagem completa do DOM
     const timer = setTimeout(handleHashNavigation, 150);
     window.addEventListener('hashchange', handleHashNavigation);
+    window.addEventListener('popstate', handleHashNavigation);
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener('hashchange', handleHashNavigation);
+      window.removeEventListener('popstate', handleHashNavigation);
     };
   }, []);
 
@@ -119,13 +233,16 @@ export const Header: React.FC<HeaderProps> = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isMobileMenuOpen]);
 
-  // Trava scroll quando menu mobile está aberto
+  // Trava scroll quando menu mobile está aberto e garante destravamento ao fechar/desmontar
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [isMobileMenuOpen]);
 
   const navLinks = [
@@ -157,18 +274,31 @@ export const Header: React.FC<HeaderProps> = () => {
     if (href.startsWith('#')) {
       e.preventDefault();
       const targetId = href.replace('#', '');
-      if (targetId === '' || targetId === 'inicio' || targetId === 'hero') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        window.history.pushState(null, '', window.location.pathname);
-        setActiveSection('inicio');
-      } else {
-        const targetElement = document.getElementById(targetId);
-        if (targetElement) {
-          targetElement.scrollIntoView({ behavior: 'smooth' });
-          window.history.pushState(null, '', href);
-          setActiveSection(targetId);
-        }
+      const canonicalId = SECTION_MAP[targetId] || targetId;
+
+      // Se o menu mobile estiver aberto, destrava overflow e fecha gaveta antes da rolagem
+      if (isMobileMenuOpen) {
+        document.body.style.overflow = '';
+        setIsMobileMenuOpen(false);
       }
+
+      // Feedback visual imediato e sincronizado
+      setActiveSection(canonicalId);
+      window.history.pushState(null, '', href === '#inicio' ? window.location.pathname : href);
+
+      // Rola com precisão compensando o cabeçalho no próximo frame de animação
+      requestAnimationFrame(() => {
+        scrollToSection(targetId);
+      });
+    }
+  };
+
+  const handleToggleMobileMenu = () => {
+    if (!isMobileMenuOpen) {
+      // Atualiza o scrollspy imediatamente antes de abrir a gaveta
+      updateScrollSpy();
+      setIsMobileMenuOpen(true);
+    } else {
       setIsMobileMenuOpen(false);
     }
   };
@@ -259,7 +389,7 @@ export const Header: React.FC<HeaderProps> = () => {
           <div className="flex lg:hidden items-center">
             <button
               type="button"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={handleToggleMobileMenu}
               className="p-2.5 rounded-lg text-[#F5F5F5] hover:bg-white/10 transition-colors focus-visible:outline-2 focus-visible:outline-[#F97316]"
               aria-expanded={isMobileMenuOpen}
               aria-controls="mobile-menu-drawer"

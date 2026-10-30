@@ -17,6 +17,21 @@
     }
   }
 
+  /* Compensação consistente da altura do cabeçalho fixo (80px mobile / 88px desktop) para âncoras */
+  section[id],
+  footer[id],
+  [id].sr-only {
+    scroll-margin-top: 5rem;
+  }
+
+  @media (min-width: 768px) {
+    section[id],
+    footer[id],
+    [id].sr-only {
+      scroll-margin-top: 5.5rem;
+    }
+  }
+
   body {
     background-color: var(--cor-fundo);
     color: var(--cor-texto);
@@ -214,7 +229,7 @@
 
 .reveal-on-scroll.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 .text-balance {

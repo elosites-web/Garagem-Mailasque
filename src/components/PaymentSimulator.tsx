@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Calculator, CreditCard, QrCode, Smartphone, Sparkles } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
-import { businessData, buildWhatsAppUrl } from '../data/business';
+import { businessData, buildWhatsAppUrl, WHATSAPP_EMOJIS } from '../data/business';
 import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 export const PaymentSimulator: React.FC = () => {
@@ -174,7 +174,15 @@ export const PaymentSimulator: React.FC = () => {
               <a
                 href={buildWhatsAppUrl({
                   originSection: 'site-simulador',
-                  customText: `Olá, Garagem Mailasque! Fiz uma simulação de referência no valor de ${formatCurrency(numericValue)} e gostaria de agendar uma avaliação do meu veículo.`,
+                  customText: [
+                    `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+                    '',
+                    `Fiz uma simulação de referência no site no valor de *${formatCurrency(numericValue)}*.`,
+                    '',
+                    'Gostaria de agendar uma avaliação para o meu veículo.',
+                    '',
+                    `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+                  ].join('\n'),
                 })}
                 target="_blank"
                 rel="noopener noreferrer"

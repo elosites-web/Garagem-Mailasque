@@ -136,9 +136,7 @@ export default function App() {
         </div>
 
         {/* 7. Galeria da Oficina (Fotos & Vídeos Reais com Lightbox) */}
-        <div className="reveal-on-scroll">
-          <Gallery />
-        </div>
+        <Gallery />
 
         {/* 8. Avaliações (Nota 4,9 no Google / 79 avaliações) */}
         <div className="reveal-on-scroll">

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { X, Send, ArrowDownRight } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
-import { businessData, buildWhatsAppUrl, isWorkshopOpenNow } from '../data/business';
+import { businessData, buildWhatsAppUrl, isWorkshopOpenNow, WHATSAPP_EMOJIS } from '../data/business';
 import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 export const FloatingWhatsApp: React.FC = () => {
@@ -104,7 +104,13 @@ export const FloatingWhatsApp: React.FC = () => {
     setHasInteracted(true);
     const url = buildWhatsAppUrl({
       originSection: 'balao-flutuante',
-      customText: 'Olá, Garagem Mailasque! Vi a mensagem no site e gostaria de um orçamento para o meu veículo.',
+      customText: [
+        `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+        '',
+        'Vi o recado no site e gostaria de solicitar um orçamento para o meu veículo.',
+        '',
+        `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+      ].join('\n'),
     });
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -129,9 +135,17 @@ export const FloatingWhatsApp: React.FC = () => {
       has_custom_message: Boolean(trimmed),
     });
 
+    const fallbackText = [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vim pelo site e gostaria de tirar uma dúvida sobre funilaria e pintura.',
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n');
+
     const url = buildWhatsAppUrl({
       originSection: 'chat-flutuante',
-      customText: trimmed || 'Olá, Garagem Mailasque! Vim pelo site e gostaria de tirar uma dúvida sobre funilaria e pintura.',
+      customText: trimmed || fallbackText,
     });
 
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -141,7 +155,13 @@ export const FloatingWhatsApp: React.FC = () => {
 
   const defaultWhatsAppUrl = buildWhatsAppUrl({
     originSection: 'botao-flutuante',
-    customText: 'Olá, Garagem Mailasque! Vim pelo site e gostaria de um orçamento para funilaria e pintura.',
+    customText: [
+      `Olá, *Garagem Mailasque*! ${WHATSAPP_EMOJIS.wave}`,
+      '',
+      'Vim pelo site e gostaria de solicitar um orçamento para funilaria e pintura.',
+      '',
+      `Podem me orientar, por favor? ${WHATSAPP_EMOJIS.smile}`,
+    ].join('\n'),
   });
 
   return (
