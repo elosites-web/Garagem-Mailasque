@@ -103,6 +103,13 @@ export function getCookiePreferences(): CookiePreferences {
     return { necessary: true, analytics: false, marketing: false };
   }
 
+  // Consistência entre recarregamentos: se o status persistido for 'denied' (ex.: invalidação prévia
+  // em uma atualização interrompida onde removeItem e a sobrescrita restritiva das preferências falharam),
+  // nunca interpreta preferências opcionais residuais ou parcialmente gravadas como ativas.
+  if (getRawStoredConsent() === 'denied') {
+    return { necessary: true, analytics: false, marketing: false };
+  }
+
   try {
     const raw = localStorage.getItem(PREFERENCES_STORAGE_KEY);
     if (raw) {
@@ -182,11 +189,19 @@ export function setStoredConsent(consent: 'granted' | 'denied'): boolean {
 }
 
 /**
- * Salva preferências e dispara evento para sincronização de UI e tags.
- * Retorna true somente quando tanto as preferências granulares quanto o status
- * de consentimento foram persistidos e verificados com sucesso.
- * Em caso de falha de persistência, ativa bloqueio em memória na sessão, tenta reverter/invalidar
- * o armazenamento e aplica imediatamente o estado restritivo (denied) no Consent Mode v2.
+ * Salva preferências em fluxo transacional de 3 etapas e dispara evento para sincronização de UI e tags:
+ * 1. Invalida primeiro `gm_cookie_consent_v1` gravando `'denied'` e valida a leitura, garantindo que nenhuma
+ *    preferência nova seja escrita enquanto um status `'granted'` anterior permanecer ativo.
+ * 2. Grava `gm_cookie_preferences_v2` com as novas preferências e valida a leitura exata.
+ * 3. Somente se (1) e (2) forem confirmados e houver categoria opcional ativa, promove `gm_cookie_consent_v1`
+ *    para `'granted'` e valida a leitura final.
+ *
+ * Em caso de falha em qualquer etapa, ativa bloqueio em memória na sessão (`persistenceFailureActive`),
+ * tenta remover/sobrescrever chaves com valores restritivos e aplica imediatamente `'denied'` nos 4 sinais do Consent Mode v2.
+ *
+ * Limite técnico documentado: não é possível garantir revogação durável entre recarregamentos de página
+ * quando absolutamente todas as operações de escrita (`setItem`) e remoção (`removeItem`) falham desde a Etapa 1,
+ * pois o armazenamento do navegador torna-se fisicamente imutável (somente-leitura).
  */
 export function saveCookiePreferences(prefs: { analytics: boolean; marketing: boolean }): boolean {
   if (typeof window === 'undefined') return false;
@@ -216,19 +231,27 @@ export function saveCookiePreferences(prefs: { analytics: boolean; marketing: bo
   persistenceFailureActive = true;
 
   try {
-    // 1. Invalida primeiro qualquer consentimento anterior antes de gravar o novo estado
-    localStorage.setItem(PREFERENCES_STORAGE_KEY, serializedPayload);
-    localStorage.setItem(CONSENT_STORAGE_KEY, status);
-
-    // 2. Confirmação de leitura pós-gravação
-    const storedPrefsRaw = localStorage.getItem(PREFERENCES_STORAGE_KEY);
-    const storedStatus = localStorage.getItem(CONSENT_STORAGE_KEY);
-
-    if (storedPrefsRaw !== serializedPayload || storedStatus !== status) {
-      throw new Error('Consent persistence verification failed');
+    // Etapa 1: Invalida primeiro o status de consentimento anterior para 'denied' antes de tocar nas preferências
+    localStorage.setItem(CONSENT_STORAGE_KEY, 'denied');
+    if (localStorage.getItem(CONSENT_STORAGE_KEY) !== 'denied') {
+      throw new Error('Consent status invalidation verification failed');
     }
 
-    // 3. Libera trava em memória e valida a consistência das funções leitoras
+    // Etapa 2: Grava as novas preferências granulares e confirma a leitura exata
+    localStorage.setItem(PREFERENCES_STORAGE_KEY, serializedPayload);
+    if (localStorage.getItem(PREFERENCES_STORAGE_KEY) !== serializedPayload) {
+      throw new Error('Cookie preferences persistence verification failed');
+    }
+
+    // Etapa 3: Promove o status para 'granted' somente após confirmar a persistência das preferências
+    if (status === 'granted') {
+      localStorage.setItem(CONSENT_STORAGE_KEY, 'granted');
+      if (localStorage.getItem(CONSENT_STORAGE_KEY) !== 'granted') {
+        throw new Error('Consent status commit verification failed');
+      }
+    }
+
+    // Etapa 4: Libera trava em memória e valida a consistência final das funções leitoras
     persistenceFailureActive = false;
 
     const verifiedPrefs = getCookiePreferences();
@@ -247,19 +270,19 @@ export function saveCookiePreferences(prefs: { analytics: boolean; marketing: bo
 
     // Tenta remover chaves parcialmente gravadas; se removeItem falhar, tenta sobrescrever com estado restritivo
     try {
-      localStorage.removeItem(PREFERENCES_STORAGE_KEY);
+      localStorage.removeItem(CONSENT_STORAGE_KEY);
     } catch {
       try {
-        localStorage.setItem(PREFERENCES_STORAGE_KEY, serializedRestrictive);
+        localStorage.setItem(CONSENT_STORAGE_KEY, 'denied');
       } catch {
         // ignorar erro ao sobrescrever
       }
     }
     try {
-      localStorage.removeItem(CONSENT_STORAGE_KEY);
+      localStorage.removeItem(PREFERENCES_STORAGE_KEY);
     } catch {
       try {
-        localStorage.setItem(CONSENT_STORAGE_KEY, 'denied');
+        localStorage.setItem(PREFERENCES_STORAGE_KEY, serializedRestrictive);
       } catch {
         // ignorar erro ao sobrescrever
       }

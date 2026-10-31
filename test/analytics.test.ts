@@ -1129,6 +1129,146 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
     }
   });
 
+  it('25d. Partial write failure after prior granted consent + removeItem failure + restrictive overwrite failure remains denied across simulated module reload and recovers when storage works again', async () => {
+    const backingStore: Record<string, string> = {};
+    let simulatePartialWriteAndRollbackFailure = false;
+
+    const customStorage = {
+      getItem(key: string): string | null {
+        return backingStore[key] ?? null;
+      },
+      setItem(key: string, value: string): void {
+        if (simulatePartialWriteAndRollbackFailure) {
+          // Permite a invalidação prévia do status para 'denied' (Etapa 1) e a gravação das novas preferências (Etapa 2),
+          // mas falha ao promover o status final para 'granted' (Etapa 3) e falha na sobrescrita restritiva das preferências no catch
+          if (key === CONSENT_STORAGE_KEY && value === 'granted') {
+            throw new Error('QuotaExceededError: failed committing final granted status');
+          }
+          if (key === PREFERENCES_STORAGE_KEY && value.includes('"analytics":false,"marketing":false')) {
+            throw new Error('QuotaExceededError: failed overwriting preferences with restrictive payload');
+          }
+        }
+        backingStore[key] = String(value);
+      },
+      removeItem(key: string): void {
+        if (simulatePartialWriteAndRollbackFailure) {
+          throw new Error('SecurityError: removeItem failed');
+        }
+        delete backingStore[key];
+      },
+      clear(): void {
+        for (const k of Object.keys(backingStore)) {
+          delete backingStore[k];
+        }
+      },
+    };
+
+    (globalThis as unknown as { localStorage: typeof customStorage }).localStorage = customStorage;
+
+    try {
+      // 1. Consentimento anterior 'granted', com Analytics e Marketing ativos
+      const initialSave = saveCookiePreferences({ analytics: true, marketing: true });
+      assert.strictEqual(initialSave, true);
+      assert.strictEqual(getStoredConsent(), 'granted');
+      assert.strictEqual(isAnalyticsAllowed(), true);
+      assert.strictEqual(isMarketingAllowed(), true);
+
+      // 2. Ativa falha parcial na atualização + falha em removeItem() + falha na sobrescrita restritiva
+      simulatePartialWriteAndRollbackFailure = true;
+      mockWindow.dataLayer = [];
+      mockHead.children = [];
+
+      const failedUpdate = saveCookiePreferences({ analytics: true, marketing: false });
+      assert.strictEqual(failedUpdate, false, 'Partial write failure must return false');
+
+      // Confirma que no storage bruto as novas preferências parciais permaneceram (pois removeItem e a sobrescrita restritiva falharam),
+      // mas o status foi invalidado para 'denied' na Etapa 1 antes de gravar as preferências
+      assert.ok(
+        backingStore[PREFERENCES_STORAGE_KEY]?.includes('"analytics":true'),
+        'Partially written preferences remain in raw storage because removeItem and restrictive overwrite both failed'
+      );
+      assert.strictEqual(
+        backingStore[CONSENT_STORAGE_KEY],
+        'denied',
+        'Status key was invalidated to denied in Stage 1 prior to writing preferences'
+      );
+
+      // 3. Simula recarregamento da página / reinicialização completa do módulo (nova instância ESM com persistenceFailureActive = false),
+      // mantendo o armazenamento inconsistente intacto
+      mockWindow.dataLayer = [];
+      mockHead.children = [];
+      delete (mockWindow as Record<string, unknown>).gtag;
+
+      const reloadedModule = await import(`../src/utils/analytics.js?reload=${Date.now()}`);
+
+      // 4. Verifica que o módulo recarregado NÃO interpreta dados parciais/inconsistentes como autorização válida
+      assert.strictEqual(reloadedModule.getStoredConsent(), 'denied', 'Reloaded module must return denied for inconsistent storage');
+      assert.deepStrictEqual(
+        reloadedModule.getCookiePreferences(),
+        {
+          necessary: true,
+          analytics: false,
+          marketing: false,
+        },
+        'Reloaded module must not expose partially written optional preferences when status is denied'
+      );
+      assert.strictEqual(reloadedModule.isAnalyticsAllowed(), false, 'Analytics must remain blocked after reload');
+      assert.strictEqual(reloadedModule.isMarketingAllowed(), false, 'Marketing must remain blocked after reload');
+
+      // Verifica que setupDefaultConsentMode após reload mantém todos os 4 sinais como 'denied'
+      reloadedModule.setupDefaultConsentMode();
+      assert.strictEqual(mockWindow.dataLayer.length, 1);
+      const defaultConsentArgs = mockWindow.dataLayer[0] as unknown[];
+      assert.strictEqual(defaultConsentArgs[0], 'consent');
+      assert.strictEqual(defaultConsentArgs[1], 'default');
+      const defaultSignals = defaultConsentArgs[2] as Record<string, string>;
+      assert.strictEqual(defaultSignals.analytics_storage, 'denied');
+      assert.strictEqual(defaultSignals.ad_storage, 'denied');
+      assert.strictEqual(defaultSignals.ad_user_data, 'denied');
+      assert.strictEqual(defaultSignals.ad_personalization, 'denied');
+
+      // Verifica que o GTM não é injetado e nenhum evento é disparado após reload
+      reloadedModule.initAnalyticsIfConsented();
+      assert.strictEqual(mockDocument.getElementById('gtm-script'), null, 'GTM must not load after reload with inconsistent storage');
+
+      reloadedModule.trackWhatsAppConversion('hero-after-reload');
+      reloadedModule.trackEvent('gallery_open', { section: 'gallery-after-reload' });
+      const trackedAfterReload = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+        (item) => item && typeof item === 'object' && typeof item.event === 'string'
+      );
+      assert.strictEqual(trackedAfterReload.length, 0, 'No events may fire after reload with inconsistent storage');
+
+      // 5. Recuperação quando o armazenamento volta a funcionar e o visitante salva novas preferências
+      simulatePartialWriteAndRollbackFailure = false;
+      const recovered = reloadedModule.saveCookiePreferences({ analytics: false, marketing: true });
+      assert.strictEqual(recovered, true, 'Saving preferences must succeed once storage recovers');
+
+      assert.strictEqual(reloadedModule.getStoredConsent(), 'granted');
+      assert.strictEqual(reloadedModule.isAnalyticsAllowed(), false);
+      assert.strictEqual(reloadedModule.isMarketingAllowed(), true);
+      assert.strictEqual(reloadedModule.getCookiePreferences().analytics, false);
+      assert.strictEqual(reloadedModule.getCookiePreferences().marketing, true);
+
+      reloadedModule.initAnalyticsIfConsented();
+      assert.ok(mockDocument.getElementById('gtm-script') !== null, 'GTM must load after valid recovery save');
+
+      reloadedModule.trackWhatsAppConversion('hero-recovered-after-reload');
+      const recoveredConversion = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          item.event === 'whatsapp_click' &&
+          item.section === 'hero-recovered-after-reload'
+      );
+      assert.strictEqual(recoveredConversion.length, 1, 'Conversion event must be allowed after storage recovery');
+    } finally {
+      (globalThis as unknown as { localStorage: MockLocalStorage }).localStorage = mockStorage;
+      saveCookiePreferences({ analytics: false, marketing: false });
+      mockStorage.clear();
+      mockWindow.dataLayer = [];
+    }
+  });
+
   it('26. All 9 official event identifiers are preserved without renaming or translation', () => {
     const expectedBehavioral = [
       'gallery_open',
