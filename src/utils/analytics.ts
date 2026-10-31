@@ -162,20 +162,24 @@ export function isMarketingAllowed(): boolean {
   return getStoredConsent() === 'granted' && getCookiePreferences().marketing === true;
 }
 
-export function setStoredConsent(consent: 'granted' | 'denied'): void {
-  if (typeof window === 'undefined') return;
+export function setStoredConsent(consent: 'granted' | 'denied'): boolean {
+  if (typeof window === 'undefined') return false;
   try {
     localStorage.setItem(CONSENT_STORAGE_KEY, consent);
+    return localStorage.getItem(CONSENT_STORAGE_KEY) === consent;
   } catch {
-    // ignorar erro de storage
+    return false;
   }
 }
 
 /**
- * Salva preferências e dispara evento para sincronização de UI e tags
+ * Salva preferências e dispara evento para sincronização de UI e tags.
+ * Retorna true somente quando tanto as preferências granulares quanto o status
+ * de consentimento foram persistidos e verificados com sucesso.
+ * Em caso de falha de persistência, reverte gravações parciais e aplica estado restritivo (denied).
  */
-export function saveCookiePreferences(prefs: { analytics: boolean; marketing: boolean }): void {
-  if (typeof window === 'undefined') return;
+export function saveCookiePreferences(prefs: { analytics: boolean; marketing: boolean }): boolean {
+  if (typeof window === 'undefined') return false;
 
   const analytics = prefs.analytics === true;
   const marketing = prefs.marketing === true;
@@ -189,14 +193,49 @@ export function saveCookiePreferences(prefs: { analytics: boolean; marketing: bo
     updatedAt: new Date().toISOString(),
   };
 
+  const restrictivePayload: CookiePreferences = {
+    necessary: true,
+    analytics: false,
+    marketing: false,
+  };
+
+  const serializedPayload = JSON.stringify(payload);
+
   try {
-    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(payload));
-    setStoredConsent(status);
+    localStorage.setItem(PREFERENCES_STORAGE_KEY, serializedPayload);
+    localStorage.setItem(CONSENT_STORAGE_KEY, status);
+
+    const storedPrefsRaw = localStorage.getItem(PREFERENCES_STORAGE_KEY);
+    const storedStatus = localStorage.getItem(CONSENT_STORAGE_KEY);
+    const verifiedPrefs = getCookiePreferences();
+
+    if (
+      storedPrefsRaw !== serializedPayload ||
+      storedStatus !== status ||
+      verifiedPrefs.analytics !== analytics ||
+      verifiedPrefs.marketing !== marketing
+    ) {
+      throw new Error('Consent persistence verification failed');
+    }
   } catch {
-    // ignorar erro de storage
+    // Evita estados parcialmente gravados: remove qualquer chave gravada parcialmente
+    try {
+      localStorage.removeItem(PREFERENCES_STORAGE_KEY);
+    } catch {
+      // ignorar erro ao limpar
+    }
+    try {
+      localStorage.removeItem(CONSENT_STORAGE_KEY);
+    } catch {
+      // ignorar erro ao limpar
+    }
+
+    // Aplica imediatamente o estado restritivo (todos os 4 sinais como 'denied')
+    updateConsentMode(restrictivePayload);
+    return false;
   }
 
-  // Atualiza Google Consent Mode v2 imediatamente
+  // Atualiza Google Consent Mode v2 somente após confirmar persistência completa
   updateConsentMode(payload);
 
   // Notifica componentes ouvintes (ex: fechamento do banner de cookies)
@@ -205,6 +244,8 @@ export function saveCookiePreferences(prefs: { analytics: boolean; marketing: bo
   } catch {
     // fallback
   }
+
+  return true;
 }
 
 /**

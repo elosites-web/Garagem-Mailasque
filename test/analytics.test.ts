@@ -858,7 +858,7 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
     assert.strictEqual('null_param' in sanitized, false);
   });
 
-  it('25. localStorage unavailability or exceptions are handled gracefully with restrictive fallback', () => {
+  it('25. localStorage unavailability or exceptions (SecurityError / QuotaExceededError) enforce all 4 Consent Mode signals as denied, never emit granted, block GTM & events, and return false', () => {
     const throwingStorage = {
       getItem(): string | null {
         throw new Error('SecurityError: localStorage disabled');
@@ -877,6 +877,7 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
     (globalThis as unknown as { localStorage: typeof throwingStorage }).localStorage = throwingStorage;
 
     try {
+      let saveResult = true;
       assert.doesNotThrow(() => {
         const prefs = getCookiePreferences();
         assert.deepStrictEqual(prefs, {
@@ -888,15 +889,120 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
         assert.strictEqual(isAnalyticsAllowed(), false);
         assert.strictEqual(isMarketingAllowed(), false);
 
-        saveCookiePreferences({ analytics: true, marketing: true });
+        saveResult = saveCookiePreferences({ analytics: true, marketing: true });
+        initAnalyticsIfConsented();
         trackWhatsAppConversion('hero');
+        trackEvent('gallery_open', { section: 'gallery' });
       });
 
-      // Como o armazenamento falhou ao persistir, o status permanece restritivo ('pending') e nenhum evento de tracking é enviado
+      // 1. Não apresenta sucesso falso de gravação
+      assert.strictEqual(saveResult, false, 'saveCookiePreferences must return false when storage fails');
+
+      // 2. isAnalyticsAllowed() e isMarketingAllowed() retornam false
+      assert.strictEqual(isAnalyticsAllowed(), false);
+      assert.strictEqual(isMarketingAllowed(), false);
+
+      // 3. Todos os 4 sinais do Consent Mode são 'denied' e nenhum recebe 'granted'
+      const consentEntries = (mockWindow.dataLayer as unknown[]).filter((entry) => {
+        if (!entry || typeof entry !== 'object') return false;
+        const args = entry as ArrayLike<unknown>;
+        return args[0] === 'consent';
+      });
+      assert.ok(consentEntries.length >= 1, 'Should record restrictive consent update');
+
+      for (const entry of consentEntries) {
+        const args = entry as ArrayLike<unknown>;
+        const signalMap = args[2] as Record<string, string>;
+        assert.strictEqual(signalMap.analytics_storage, 'denied', 'analytics_storage must be denied');
+        assert.strictEqual(signalMap.ad_storage, 'denied', 'ad_storage must be denied');
+        assert.strictEqual(signalMap.ad_user_data, 'denied', 'ad_user_data must be denied');
+        assert.strictEqual(signalMap.ad_personalization, 'denied', 'ad_personalization must be denied');
+      }
+
+      // 4. initAnalyticsIfConsented() não injeta o script GTM
+      assert.strictEqual(
+        mockDocument.getElementById('gtm-script'),
+        null,
+        'GTM script must NOT be injected when persistence fails'
+      );
+
+      // 5. Nenhum evento é enviado ao dataLayer
+      const trackedEvents = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+        (item) => item && typeof item === 'object' && typeof item.event === 'string'
+      );
+      assert.strictEqual(trackedEvents.length, 0, 'No tracking events may be dispatched when storage fails');
+    } finally {
+      (globalThis as unknown as { localStorage: MockLocalStorage }).localStorage = mockStorage;
+    }
+  });
+
+  it('25b. Partial write failure (preferences key succeeds, status key fails) rolls back partial state, keeps all 4 Consent Mode signals denied, and blocks GTM & events', () => {
+    const partialStore: Record<string, string> = {};
+    const partialFailureStorage = {
+      getItem(key: string): string | null {
+        return partialStore[key] ?? null;
+      },
+      setItem(key: string, value: string): void {
+        if (key === CONSENT_STORAGE_KEY) {
+          throw new Error('QuotaExceededError: failed writing status key');
+        }
+        partialStore[key] = String(value);
+      },
+      removeItem(key: string): void {
+        delete partialStore[key];
+      },
+      clear(): void {
+        for (const k of Object.keys(partialStore)) {
+          delete partialStore[k];
+        }
+      },
+    };
+
+    (globalThis as unknown as { localStorage: typeof partialFailureStorage }).localStorage = partialFailureStorage;
+
+    try {
+      const saved = saveCookiePreferences({ analytics: true, marketing: true });
+      assert.strictEqual(saved, false, 'saveCookiePreferences must return false on partial persistence failure');
+
+      // Preferência parcial foi revertida e não permanece ativa
+      assert.strictEqual(partialStore[PREFERENCES_STORAGE_KEY], undefined, 'Partial preferences write must be rolled back');
+      assert.deepStrictEqual(getCookiePreferences(), {
+        necessary: true,
+        analytics: false,
+        marketing: false,
+      });
+      assert.strictEqual(isAnalyticsAllowed(), false);
+      assert.strictEqual(isMarketingAllowed(), false);
+
+      // Todos os 4 sinais do Consent Mode permanecem 'denied'
+      const lastCall = mockWindow.dataLayer[mockWindow.dataLayer.length - 1] as unknown[];
+      assert.strictEqual(lastCall[0], 'consent');
+      assert.strictEqual(lastCall[1], 'update');
+      const signals = lastCall[2] as Record<string, string>;
+      assert.strictEqual(signals.analytics_storage, 'denied');
+      assert.strictEqual(signals.ad_storage, 'denied');
+      assert.strictEqual(signals.ad_user_data, 'denied');
+      assert.strictEqual(signals.ad_personalization, 'denied');
+
+      // GTM e eventos permanecem bloqueados
+      initAnalyticsIfConsented();
+      assert.strictEqual(mockDocument.getElementById('gtm-script'), null);
+
+      trackWhatsAppConversion('hero');
       const events = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
         (item) => item && typeof item === 'object' && item.event === 'whatsapp_click'
       );
-      assert.strictEqual(events.length, 0, 'Tracking events must remain blocked when storage fails');
+      assert.strictEqual(events.length, 0);
+
+      // Verifica que PrivacyModal também trata o retorno booleano sem exibir falso sucesso
+      const privacyModalSource = fs.readFileSync(
+        path.resolve(process.cwd(), 'src/components/PrivacyModal.tsx'),
+        'utf8'
+      );
+      assert.ok(
+        privacyModalSource.includes('if (!saved)'),
+        'PrivacyModal must check saveCookiePreferences return value before showing success feedback'
+      );
     } finally {
       (globalThis as unknown as { localStorage: MockLocalStorage }).localStorage = mockStorage;
     }

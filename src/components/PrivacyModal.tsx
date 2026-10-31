@@ -5,7 +5,6 @@ import {
   getCookiePreferences,
   saveCookiePreferences,
   initAnalyticsIfConsented,
-  setStoredConsent,
 } from '../utils/analytics';
 
 export type LegalDocType = 'privacy' | 'terms' | 'cookies' | 'cookie-settings';
@@ -51,10 +50,16 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
   };
 
   const handleSavePreferences = () => {
-    saveCookiePreferences({
+    const saved = saveCookiePreferences({
       analytics: analyticsAllowed,
       marketing: marketingAllowed,
     });
+    if (!saved) {
+      setAnalyticsAllowed(false);
+      setMarketingAllowed(false);
+      setSavedFeedback(false);
+      return;
+    }
     if (analyticsAllowed || marketingAllowed) {
       initAnalyticsIfConsented();
     }
@@ -65,13 +70,18 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
   };
 
   const handleAcceptAll = () => {
-    setAnalyticsAllowed(true);
-    setMarketingAllowed(true);
-    setStoredConsent('granted');
-    saveCookiePreferences({
+    const saved = saveCookiePreferences({
       analytics: true,
       marketing: true,
     });
+    if (!saved) {
+      setAnalyticsAllowed(false);
+      setMarketingAllowed(false);
+      setSavedFeedback(false);
+      return;
+    }
+    setAnalyticsAllowed(true);
+    setMarketingAllowed(true);
     initAnalyticsIfConsented();
     setSavedFeedback(true);
     setTimeout(() => {
@@ -82,11 +92,14 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
   const handleRejectNonEssential = () => {
     setAnalyticsAllowed(false);
     setMarketingAllowed(false);
-    setStoredConsent('denied');
-    saveCookiePreferences({
+    const saved = saveCookiePreferences({
       analytics: false,
       marketing: false,
     });
+    if (!saved) {
+      setSavedFeedback(false);
+      return;
+    }
     setSavedFeedback(true);
     setTimeout(() => {
       setSavedFeedback(false);
