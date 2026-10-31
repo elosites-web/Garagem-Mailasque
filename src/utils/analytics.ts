@@ -87,15 +87,19 @@ export const CONVERSION_EVENTS = new Set([
   'phone_click',
 ]);
 
+// Proteção em memória de sessão: impede que falhas de persistência mantenham um consentimento anterior ativo
+let persistenceFailureActive = false;
+
 /**
  * Obtém as preferências salvas no localStorage com validação estrita (deny-by-default).
  * - Se gm_cookie_preferences_v2 não existir, estiver corrompido ou não for um objeto válido,
  *   retorna todas as categorias opcionais como false.
  * - Aceita analytics e marketing somente quando o valor for estritamente boolean true.
  * - O registro legado (gm_cookie_consent_v1) nunca eleva permissões granulares.
+ * - Se a última tentativa de persistência na sessão falhou, mantém estado restritivo.
  */
 export function getCookiePreferences(): CookiePreferences {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || persistenceFailureActive) {
     return { necessary: true, analytics: false, marketing: false };
   }
 
@@ -135,9 +139,12 @@ function getRawStoredConsent(): AnalyticsConsent {
 }
 
 /**
- * Retorna o status de consentimento garantindo consistência entre status e preferências
+ * Retorna o status de consentimento garantindo consistência entre status, preferências e integridade de persistência
  */
 export function getStoredConsent(): AnalyticsConsent {
+  if (typeof window === 'undefined') return 'pending';
+  if (persistenceFailureActive) return 'denied';
+
   const rawStatus = getRawStoredConsent();
   if (rawStatus === 'pending') return 'pending';
 
@@ -155,10 +162,12 @@ export function getStoredConsent(): AnalyticsConsent {
 }
 
 export function isAnalyticsAllowed(): boolean {
+  if (persistenceFailureActive) return false;
   return getStoredConsent() === 'granted' && getCookiePreferences().analytics === true;
 }
 
 export function isMarketingAllowed(): boolean {
+  if (persistenceFailureActive) return false;
   return getStoredConsent() === 'granted' && getCookiePreferences().marketing === true;
 }
 
@@ -176,7 +185,8 @@ export function setStoredConsent(consent: 'granted' | 'denied'): boolean {
  * Salva preferências e dispara evento para sincronização de UI e tags.
  * Retorna true somente quando tanto as preferências granulares quanto o status
  * de consentimento foram persistidos e verificados com sucesso.
- * Em caso de falha de persistência, reverte gravações parciais e aplica estado restritivo (denied).
+ * Em caso de falha de persistência, ativa bloqueio em memória na sessão, tenta reverter/invalidar
+ * o armazenamento e aplica imediatamente o estado restritivo (denied) no Consent Mode v2.
  */
 export function saveCookiePreferences(prefs: { analytics: boolean; marketing: boolean }): boolean {
   if (typeof window === 'undefined') return false;
@@ -200,34 +210,59 @@ export function saveCookiePreferences(prefs: { analytics: boolean; marketing: bo
   };
 
   const serializedPayload = JSON.stringify(payload);
+  const serializedRestrictive = JSON.stringify(restrictivePayload);
+
+  // Ativa proteção em memória antes de iniciar a gravação; só será liberada se toda a operação e verificação tiverem êxito
+  persistenceFailureActive = true;
 
   try {
+    // 1. Invalida primeiro qualquer consentimento anterior antes de gravar o novo estado
     localStorage.setItem(PREFERENCES_STORAGE_KEY, serializedPayload);
     localStorage.setItem(CONSENT_STORAGE_KEY, status);
 
+    // 2. Confirmação de leitura pós-gravação
     const storedPrefsRaw = localStorage.getItem(PREFERENCES_STORAGE_KEY);
     const storedStatus = localStorage.getItem(CONSENT_STORAGE_KEY);
-    const verifiedPrefs = getCookiePreferences();
 
-    if (
-      storedPrefsRaw !== serializedPayload ||
-      storedStatus !== status ||
-      verifiedPrefs.analytics !== analytics ||
-      verifiedPrefs.marketing !== marketing
-    ) {
+    if (storedPrefsRaw !== serializedPayload || storedStatus !== status) {
       throw new Error('Consent persistence verification failed');
     }
+
+    // 3. Libera trava em memória e valida a consistência das funções leitoras
+    persistenceFailureActive = false;
+
+    const verifiedPrefs = getCookiePreferences();
+    const verifiedStatus = getStoredConsent();
+
+    if (
+      verifiedPrefs.analytics !== analytics ||
+      verifiedPrefs.marketing !== marketing ||
+      verifiedStatus !== status
+    ) {
+      persistenceFailureActive = true;
+      throw new Error('Consent reader verification failed');
+    }
   } catch {
-    // Evita estados parcialmente gravados: remove qualquer chave gravada parcialmente
+    persistenceFailureActive = true;
+
+    // Tenta remover chaves parcialmente gravadas; se removeItem falhar, tenta sobrescrever com estado restritivo
     try {
       localStorage.removeItem(PREFERENCES_STORAGE_KEY);
     } catch {
-      // ignorar erro ao limpar
+      try {
+        localStorage.setItem(PREFERENCES_STORAGE_KEY, serializedRestrictive);
+      } catch {
+        // ignorar erro ao sobrescrever
+      }
     }
     try {
       localStorage.removeItem(CONSENT_STORAGE_KEY);
     } catch {
-      // ignorar erro ao limpar
+      try {
+        localStorage.setItem(CONSENT_STORAGE_KEY, 'denied');
+      } catch {
+        // ignorar erro ao sobrescrever
+      }
     }
 
     // Aplica imediatamente o estado restritivo (todos os 4 sinais como 'denied')

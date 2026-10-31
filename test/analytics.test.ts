@@ -933,6 +933,9 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
       assert.strictEqual(trackedEvents.length, 0, 'No tracking events may be dispatched when storage fails');
     } finally {
       (globalThis as unknown as { localStorage: MockLocalStorage }).localStorage = mockStorage;
+      saveCookiePreferences({ analytics: false, marketing: false });
+      mockStorage.clear();
+      mockWindow.dataLayer = [];
     }
   });
 
@@ -1005,6 +1008,124 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
       );
     } finally {
       (globalThis as unknown as { localStorage: MockLocalStorage }).localStorage = mockStorage;
+      saveCookiePreferences({ analytics: false, marketing: false });
+      mockStorage.clear();
+      mockWindow.dataLayer = [];
+    }
+  });
+
+  it('25c. Rollback failure with prior granted consent (preferences write succeeds, status write fails, removeItem fails) blocks old granted status until valid recovery save', () => {
+    const backingStore: Record<string, string> = {};
+    let failStatusWriteAndRemove = false;
+
+    const customStorage = {
+      getItem(key: string): string | null {
+        return backingStore[key] ?? null;
+      },
+      setItem(key: string, value: string): void {
+        if (failStatusWriteAndRemove && key === CONSENT_STORAGE_KEY) {
+          throw new Error('QuotaExceededError: status key write failed');
+        }
+        backingStore[key] = String(value);
+      },
+      removeItem(key: string): void {
+        if (failStatusWriteAndRemove) {
+          throw new Error('SecurityError: removeItem failed');
+        }
+        delete backingStore[key];
+      },
+      clear(): void {
+        for (const k of Object.keys(backingStore)) {
+          delete backingStore[k];
+        }
+      },
+    };
+
+    (globalThis as unknown as { localStorage: typeof customStorage }).localStorage = customStorage;
+
+    try {
+      // 1. Começa com consentimento anterior 'granted' e preferências completas
+      const initialSaved = saveCookiePreferences({ analytics: true, marketing: true });
+      assert.strictEqual(initialSaved, true);
+      assert.strictEqual(getStoredConsent(), 'granted');
+      assert.strictEqual(isAnalyticsAllowed(), true);
+      assert.strictEqual(isMarketingAllowed(), true);
+
+      // Limpa dataLayer e head para observar apenas o que ocorre a partir da falha
+      mockWindow.dataLayer = [];
+      mockHead.children = [];
+
+      // 2. Ativa falha na gravação do status e falha na remoção das chaves
+      failStatusWriteAndRemove = true;
+
+      // 3. Tenta salvar nova preferência (preferências grava com sucesso, status falha, removeItem falha)
+      const failedSave = saveCookiePreferences({ analytics: true, marketing: false });
+      assert.strictEqual(failedSave, false, 'saveCookiePreferences must return false when status write fails');
+
+      // 4. Mesmo que a chave de status antiga no storage bruto ainda contenha 'granted' (pois setItem de status e removeItem falharam),
+      // o sistema DEVE permanecer estritamente restritivo
+      assert.strictEqual(backingStore[CONSENT_STORAGE_KEY], 'granted', 'Raw backing store still had old granted string due to failed removeItem');
+      assert.strictEqual(getStoredConsent(), 'denied', 'getStoredConsent() must NOT trust old granted status after failed persistence');
+      assert.strictEqual(isAnalyticsAllowed(), false, 'isAnalyticsAllowed() must be false after failed persistence');
+      assert.strictEqual(isMarketingAllowed(), false, 'isMarketingAllowed() must be false after failed persistence');
+      assert.deepStrictEqual(getCookiePreferences(), {
+        necessary: true,
+        analytics: false,
+        marketing: false,
+      });
+
+      // 5. Confirma que os 4 sinais do Consent Mode v2 foram atualizados para 'denied'
+      const consentUpdatesAfterFailure = (mockWindow.dataLayer as unknown[]).filter((entry) => {
+        if (!entry || typeof entry !== 'object') return false;
+        const args = entry as ArrayLike<unknown>;
+        return args[0] === 'consent' && args[1] === 'update';
+      });
+      assert.strictEqual(consentUpdatesAfterFailure.length, 1);
+      const deniedSignals = (consentUpdatesAfterFailure[0] as ArrayLike<unknown>)[2] as Record<string, string>;
+      assert.strictEqual(deniedSignals.analytics_storage, 'denied');
+      assert.strictEqual(deniedSignals.ad_storage, 'denied');
+      assert.strictEqual(deniedSignals.ad_user_data, 'denied');
+      assert.strictEqual(deniedSignals.ad_personalization, 'denied');
+
+      // 6. Chama novamente getStoredConsent(), isAnalyticsAllowed(), isMarketingAllowed() e initAnalyticsIfConsented()
+      assert.strictEqual(getStoredConsent(), 'denied');
+      assert.strictEqual(isAnalyticsAllowed(), false);
+      assert.strictEqual(isMarketingAllowed(), false);
+      initAnalyticsIfConsented();
+      assert.strictEqual(mockDocument.getElementById('gtm-script'), null, 'GTM must NOT be loaded after failed persistence');
+
+      // 7. Confirma que nenhum evento é autorizado
+      trackWhatsAppConversion('hero');
+      trackEvent('gallery_open', { section: 'gallery' });
+      const blockedEvents = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+        (item) => item && typeof item === 'object' && typeof item.event === 'string'
+      );
+      assert.strictEqual(blockedEvents.length, 0, 'Old granted status must never authorize events after failed update');
+
+      // 8. Simula recuperação do armazenamento e nova gravação válida
+      failStatusWriteAndRemove = false;
+      const recoveredSave = saveCookiePreferences({ analytics: true, marketing: true });
+      assert.strictEqual(recoveredSave, true, 'saveCookiePreferences must succeed once storage recovers');
+
+      assert.strictEqual(getStoredConsent(), 'granted');
+      assert.strictEqual(isAnalyticsAllowed(), true);
+      assert.strictEqual(isMarketingAllowed(), true);
+      assert.deepStrictEqual(getCookiePreferences().analytics, true);
+      assert.deepStrictEqual(getCookiePreferences().marketing, true);
+
+      initAnalyticsIfConsented();
+      assert.ok(mockDocument.getElementById('gtm-script') !== null, 'GTM must load normally after valid recovery save');
+
+      trackWhatsAppConversion('hero-recovered');
+      const recoveredEvents = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+        (item) => item && typeof item === 'object' && item.event === 'whatsapp_click' && item.section === 'hero-recovered'
+      );
+      assert.strictEqual(recoveredEvents.length, 1, 'Conversion event must be dispatched after valid recovery save');
+    } finally {
+      (globalThis as unknown as { localStorage: MockLocalStorage }).localStorage = mockStorage;
+      saveCookiePreferences({ analytics: false, marketing: false });
+      mockStorage.clear();
+      mockWindow.dataLayer = [];
     }
   });
 
