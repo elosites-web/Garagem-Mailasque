@@ -4,15 +4,13 @@ import {
   buildWhatsAppMessage,
   buildWhatsAppUrl,
   businessData,
-  WHATSAPP_EMOJIS,
   WHATSAPP_TEMPLATES,
 } from '../src/data/business';
-import { WHATSAPP_EMOJIS as DIRECT_WHATSAPP_EMOJIS } from '../src/utils/whatsappEmojis';
 import { services } from '../src/data/services';
 import { trackWhatsAppConversion, trackLeadSubmission, sanitizeEventParams } from '../src/utils/analytics';
 
 /**
- * Extrai e decodifica o parametro 'text' usando a API padrao URL / URLSearchParams.
+ * Extrai e decodifica o parâmetro 'text' usando a API padrão URL / URLSearchParams.
  */
 function getDecodedText(whatsappUrl: string): string {
   const urlObj = new URL(whatsappUrl);
@@ -20,62 +18,74 @@ function getDecodedText(whatsappUrl: string): string {
 }
 
 /**
- * Valida rigorosamente qualquer mensagem original e sua respectiva URL do WhatsApp:
- * - Ausencia de U+FFFD tanto na mensagem original quanto na decodificada
- * - Ausencia de %EF%BF%BD na URL codificada
- * - Comparacao round-trip (originalMessage === decodedMessage)
- * - Presenca dos emojis reais via String.fromCodePoint(...)
- * - Preservacao de quebras de linha, negrito (*...*) e acentuacao em portugues
+ * Regex abrangente para detectar qualquer emoji (Extended_Pictographic, Emoji_Presentation ou pares substitutos astrais).
  */
-function assertValidWhatsAppOutput(params: {
+const EMOJI_REGEX = /\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|\uFE0F/u;
+
+/**
+ * Valida rigorosamente qualquer mensagem predefinida e sua respectiva URL do WhatsApp:
+ * 1. Ausência total de emojis
+ * 2. Ausência de U+FFFD tanto na mensagem original quanto na decodificada e ausência de %EF%BF%BD na URL
+ * 3. Preservação de formatação em negrito com asterisco simples (*texto*) sem duplo asterisco (**)
+ * 4. Preservação de todas as quebras de linha intencionais e separação de parágrafos
+ * 5. Preservação de caracteres acentuados do português
+ * 6. Comparação exata round-trip (originalMessage === decodedMessage)
+ * 7. Ausência de identificadores internos de origem ([site-header], [chat-flutuante], etc.)
+ */
+function assertValidEmojiFreeWhatsAppOutput(params: {
   label: string;
   originalMessage: string;
   url: string;
-  expectedEmojiCodePoints: number[];
+  expectedExactText: string;
   expectedAccentedWords: string[];
   expectedBoldSegments: string[];
-  minLines?: number;
+  expectedLineCount: number;
 }) {
   const {
     label,
     originalMessage,
     url,
-    expectedEmojiCodePoints,
+    expectedExactText,
     expectedAccentedWords,
     expectedBoldSegments,
-    minLines = 5,
+    expectedLineCount,
   } = params;
 
   const decodedMessage = getDecodedText(url);
 
-  // 1. Nenhuma das strings pode conter U+FFFD
+  // 1. Nenhum emoji permitido em mensagens predefinidas
+  assert.equal(
+    EMOJI_REGEX.test(originalMessage),
+    false,
+    `[${label}] Original message must not contain any emojis: ${originalMessage}`
+  );
+  assert.equal(
+    EMOJI_REGEX.test(decodedMessage),
+    false,
+    `[${label}] Decoded message must not contain any emojis: ${decodedMessage}`
+  );
+
+  // 2. Nenhuma das strings pode conter U+FFFD
   assert.equal(originalMessage.includes('\uFFFD'), false, `[${label}] Original message must not contain U+FFFD`);
   assert.equal(decodedMessage.includes('\uFFFD'), false, `[${label}] Decoded message must not contain U+FFFD`);
   assert.equal(url.includes('\uFFFD'), false, `[${label}] URL must not contain U+FFFD`);
   assert.equal(url.includes('%EF%BF%BD'), false, `[${label}] Encoded URL must not contain %EF%BF%BD`);
   assert.equal(url.includes('%25'), false, `[${label}] URL must not contain double-encoded sequences (%25)`);
 
-  // 2. Round-trip exato
+  // 3. Round-trip exato e correspondência com o texto esperado
+  assert.equal(originalMessage, expectedExactText, `[${label}] Original message must match expected formatted text`);
+  assert.equal(decodedMessage, expectedExactText, `[${label}] Decoded message must match expected formatted text`);
   assert.equal(originalMessage, decodedMessage, `[${label}] Round-trip originalMessage must equal decodedMessage`);
 
-  // 3. Verificacao explicita de cada emoji via String.fromCodePoint()
-  for (const cp of expectedEmojiCodePoints) {
-    const emojiChar = String.fromCodePoint(cp);
-    assert.equal(
-      originalMessage.includes(emojiChar),
-      true,
-      `[${label}] Original message must include emoji 0x${cp.toString(16).toUpperCase()}`
-    );
-    assert.equal(
-      decodedMessage.includes(emojiChar),
-      true,
-      `[${label}] Decoded message must include emoji 0x${cp.toString(16).toUpperCase()}`
-    );
-  }
-
-  // 4. Quebras de linha preservadas
+  // 4. Quebras de linha e separação de parágrafos preservadas (não achatado em parágrafo único)
   const lines = decodedMessage.split('\n');
-  assert.ok(lines.length >= minLines, `[${label}] Expected at least ${minLines} lines, got ${lines.length}`);
+  assert.equal(
+    lines.length,
+    expectedLineCount,
+    `[${label}] Expected exactly ${expectedLineCount} lines, got ${lines.length}`
+  );
+  assert.equal(lines[0], 'Olá, *Garagem Mailasque*!', `[${label}] First line must be greeting with bold business name`);
+  assert.equal(lines[1], '', `[${label}] Second line must be blank paragraph separator`);
   assert.ok(url.includes('%0A') || url.includes('%0a'), `[${label}] URL must encode line breaks as %0A`);
 
   // 5. Marcadores de negrito do WhatsApp (*texto*) preservados sem markdown duplo (**)
@@ -88,7 +98,7 @@ function assertValidWhatsAppOutput(params: {
     );
   }
 
-  // 6. Acentuacao em portugues preservada
+  // 6. Acentuação em português preservada
   for (const word of expectedAccentedWords) {
     assert.equal(
       decodedMessage.includes(word),
@@ -98,31 +108,18 @@ function assertValidWhatsAppOutput(params: {
   }
 }
 
-describe('WhatsApp Message Builder & Emoji Encoding Regression Suite', () => {
+describe('WhatsApp Predefined Messages (Emoji-Free, Formatted & Validated)', () => {
   const originRegex = /\[(site-[a-z0-9-]+|balao-flutuante|chat-flutuante|botao-flutuante|antes-depois)\]/i;
 
-  it('1. WHATSAPP_EMOJIS dictionary is built with valid runtime Unicode code points and zero U+FFFD', () => {
-    const expectedPairs: Array<[keyof typeof WHATSAPP_EMOJIS, number]> = [
-      ['wave', 0x1F44B],
-      ['smile', 0x1F60A],
-      ['user', 0x1F464],
-      ['tools', 0x1F6E0],
-      ['car', 0x1F697],
-      ['shield', 0x1F6E1],
-      ['wrench', 0x1F527],
-      ['memo', 0x1F4DD],
-    ];
+  it('1. General budget CTAs (Header, Mobile Drawer, Hero, Footer) match reference formatting with zero emojis and zero U+FFFD', () => {
+    const expectedGeneralMessage = [
+      'Olá, *Garagem Mailasque*!',
+      '',
+      'Vim pelo site e gostaria de solicitar um *orçamento*.',
+      '',
+      'Podem me orientar, por favor?',
+    ].join('\n');
 
-    for (const [key, expectedCp] of expectedPairs) {
-      const val = WHATSAPP_EMOJIS[key];
-      assert.strictEqual(val, DIRECT_WHATSAPP_EMOJIS[key]);
-      assert.equal(val.includes('\uFFFD'), false, `Emoji "${key}" must not contain U+FFFD`);
-      assert.equal(val.codePointAt(0), expectedCp, `Emoji "${key}" must have code point 0x${expectedCp.toString(16)}`);
-      assert.equal(val.includes(String.fromCodePoint(expectedCp)), true);
-    }
-  });
-
-  it('2. General budget message (Hero, Header, Footer, Mobile Drawer) passes all U+FFFD and emoji code point checks', () => {
     const sections = ['site-header', 'site-hero', 'site-footer', 'site-drawer-mobile'];
     for (const section of sections) {
       const originalMessage = buildWhatsAppMessage({ originSection: section });
@@ -133,123 +130,176 @@ describe('WhatsApp Message Builder & Emoji Encoding Regression Suite', () => {
       assert.equal(originRegex.test(decodedMessage), false);
       assert.equal(decodedMessage.includes(section), false);
 
-      assertValidWhatsAppOutput({
+      assertValidEmojiFreeWhatsAppOutput({
         label: `general-${section}`,
         originalMessage,
         url,
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: expectedGeneralMessage,
         expectedAccentedWords: ['Olá', 'orçamento'],
-        expectedBoldSegments: ['*Garagem Mailasque*'],
-        minLines: 5,
+        expectedBoldSegments: ['*Garagem Mailasque*', '*orçamento*'],
+        expectedLineCount: 5,
       });
     }
   });
 
-  it('3. Every predefined WhatsApp CTA template produces valid emojis, zero U+FFFD, preserved line breaks, bold markers, and Portuguese accents', () => {
-    const predefinedTemplates = [
-      {
-        label: 'general',
-        originSection: 'site-hero',
-        originalMessage: WHATSAPP_TEMPLATES.general(),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
-        expectedAccentedWords: ['Olá', 'orçamento'],
-        expectedBoldSegments: ['*Garagem Mailasque*'],
-        minLines: 5,
-      },
+  it('2. All predefined section CTAs (Floating Bubble, Floating Chat Fallback, Floating Button, Insurers, APVS, Simulator, Before/After) contain no emojis and preserve bold & line breaks', () => {
+    const predefinedCases = [
       {
         label: 'floatingBubble',
         originSection: 'balao-flutuante',
         originalMessage: WHATSAPP_TEMPLATES.floatingBubble(),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: [
+          'Olá, *Garagem Mailasque*!',
+          '',
+          'Vi o recado no site e gostaria de solicitar um *orçamento* para o meu veículo.',
+          '',
+          'Podem me orientar, por favor?',
+        ].join('\n'),
         expectedAccentedWords: ['Olá', 'orçamento', 'veículo'],
-        expectedBoldSegments: ['*Garagem Mailasque*'],
-        minLines: 5,
+        expectedBoldSegments: ['*Garagem Mailasque*', '*orçamento*'],
+        expectedLineCount: 5,
       },
       {
         label: 'floatingChatFallback',
         originSection: 'chat-flutuante',
         originalMessage: WHATSAPP_TEMPLATES.floatingChatFallback(),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: [
+          'Olá, *Garagem Mailasque*!',
+          '',
+          'Vim pelo site e gostaria de tirar uma dúvida sobre *funilaria e pintura*.',
+          '',
+          'Podem me orientar, por favor?',
+        ].join('\n'),
         expectedAccentedWords: ['Olá', 'dúvida'],
-        expectedBoldSegments: ['*Garagem Mailasque*'],
-        minLines: 5,
+        expectedBoldSegments: ['*Garagem Mailasque*', '*funilaria e pintura*'],
+        expectedLineCount: 5,
       },
       {
         label: 'floatingButtonDefault',
         originSection: 'botao-flutuante',
         originalMessage: WHATSAPP_TEMPLATES.floatingButtonDefault(),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: [
+          'Olá, *Garagem Mailasque*!',
+          '',
+          'Vim pelo site e gostaria de solicitar um orçamento para *funilaria e pintura*.',
+          '',
+          'Podem me orientar, por favor?',
+        ].join('\n'),
         expectedAccentedWords: ['Olá', 'orçamento'],
-        expectedBoldSegments: ['*Garagem Mailasque*'],
-        minLines: 5,
+        expectedBoldSegments: ['*Garagem Mailasque*', '*funilaria e pintura*'],
+        expectedLineCount: 5,
       },
       {
         label: 'insurers',
         originSection: 'site-seguradoras',
         originalMessage: WHATSAPP_TEMPLATES.insurers(),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: [
+          'Olá, *Garagem Mailasque*!',
+          '',
+          'Acionei o *sinistro pelo seguro* e gostaria de orientações para consertar meu carro na oficina de vocês.',
+          '',
+          'Como podemos proceder?',
+        ].join('\n'),
         expectedAccentedWords: ['Olá', 'orientações', 'vocês'],
-        expectedBoldSegments: ['*Garagem Mailasque*'],
-        minLines: 5,
+        expectedBoldSegments: ['*Garagem Mailasque*', '*sinistro pelo seguro*'],
+        expectedLineCount: 5,
       },
       {
         label: 'partnerApvs',
         originSection: 'site-parceria-apvs',
         originalMessage: WHATSAPP_TEMPLATES.partnerApvs(),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: [
+          'Olá, *Garagem Mailasque*!',
+          '',
+          'Gostaria de mais informações sobre a proteção veicular *APVS Brasil* na oficina.',
+          '',
+          'Poderiam me orientar, por favor?',
+        ].join('\n'),
         expectedAccentedWords: ['Olá', 'informações', 'proteção'],
         expectedBoldSegments: ['*Garagem Mailasque*', '*APVS Brasil*'],
-        minLines: 5,
+        expectedLineCount: 5,
       },
       {
         label: 'paymentSimulator',
         originSection: 'site-simulador',
         originalMessage: WHATSAPP_TEMPLATES.paymentSimulator('R$ 1.500,00'),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: [
+          'Olá, *Garagem Mailasque*!',
+          '',
+          'Fiz uma simulação de referência no site no valor de *R$ 1.500,00*.',
+          '',
+          'Gostaria de agendar uma *avaliação* para o meu veículo.',
+          '',
+          'Podem me orientar, por favor?',
+        ].join('\n'),
         expectedAccentedWords: ['Olá', 'simulação', 'referência', 'avaliação', 'veículo'],
-        expectedBoldSegments: ['*Garagem Mailasque*', '*R$ 1.500,00*'],
-        minLines: 7,
+        expectedBoldSegments: ['*Garagem Mailasque*', '*R$ 1.500,00*', '*avaliação*'],
+        expectedLineCount: 7,
       },
       {
         label: 'beforeAfterCase',
         originSection: 'antes-depois',
         originalMessage: WHATSAPP_TEMPLATES.beforeAfterCase('Honda City', 'Honda City 2021'),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: [
+          'Olá, *Garagem Mailasque*!',
+          '',
+          'Vi o caso de *Honda City* (Honda City 2021) no site e gostaria de solicitar um *orçamento* para o meu carro.',
+          '',
+          'Podem me orientar, por favor?',
+        ].join('\n'),
         expectedAccentedWords: ['Olá', 'orçamento'],
-        expectedBoldSegments: ['*Garagem Mailasque*', '*Honda City*'],
-        minLines: 5,
+        expectedBoldSegments: ['*Garagem Mailasque*', '*Honda City*', '*orçamento*'],
+        expectedLineCount: 5,
       },
       {
         label: 'beforeAfterFallback',
         originSection: 'antes-depois',
         originalMessage: WHATSAPP_TEMPLATES.beforeAfterFallback(),
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: [
+          'Olá, *Garagem Mailasque*!',
+          '',
+          'Vim pelo site e gostaria de ver fotos e exemplos de *reparos recentes* semelhantes ao do meu veículo.',
+          '',
+          'Poderiam me enviar, por favor?',
+        ].join('\n'),
         expectedAccentedWords: ['Olá', 'veículo'],
-        expectedBoldSegments: ['*Garagem Mailasque*'],
-        minLines: 5,
+        expectedBoldSegments: ['*Garagem Mailasque*', '*reparos recentes*'],
+        expectedLineCount: 5,
       },
     ];
 
-    for (const item of predefinedTemplates) {
+    for (const tc of predefinedCases) {
       const url = buildWhatsAppUrl({
-        originSection: item.originSection,
-        customText: item.originalMessage,
+        originSection: tc.originSection,
+        customText: tc.originalMessage,
       });
+      const decodedMessage = getDecodedText(url);
 
-      assertValidWhatsAppOutput({
-        label: item.label,
-        originalMessage: item.originalMessage,
+      assert.equal(originRegex.test(decodedMessage), false);
+      assert.equal(decodedMessage.includes(tc.originSection), false);
+
+      assertValidEmojiFreeWhatsAppOutput({
+        label: tc.label,
+        originalMessage: tc.originalMessage,
         url,
-        expectedEmojiCodePoints: item.expectedEmojiCodePoints,
-        expectedAccentedWords: item.expectedAccentedWords,
-        expectedBoldSegments: item.expectedBoldSegments,
-        minLines: item.minLines,
+        expectedExactText: tc.expectedExactText,
+        expectedAccentedWords: tc.expectedAccentedWords,
+        expectedBoldSegments: tc.expectedBoldSegments,
+        expectedLineCount: tc.expectedLineCount,
       });
     }
   });
 
-  it('4. Service-specific predefined messages pass all U+FFFD and emoji code point checks', () => {
+  it('3. Service-specific buttons produce emoji-free formatted messages with bold service names', () => {
     for (const service of services) {
+      const expectedServiceText = [
+        'Olá, *Garagem Mailasque*!',
+        '',
+        `Gostaria de solicitar um orçamento para *${service.name}*.`,
+        '',
+        'Podem me orientar, por favor?',
+      ].join('\n');
+
       const originalMessage = buildWhatsAppMessage({
         originSection: `site-servico-${service.id}`,
         service: service.name,
@@ -260,23 +310,22 @@ describe('WhatsApp Message Builder & Emoji Encoding Regression Suite', () => {
       });
       const decodedMessage = getDecodedText(url);
 
-      assert.equal(service.whatsappMessage.includes('\uFFFD'), false);
-      assert.equal(originalMessage, service.whatsappMessage);
-      assert.equal(decodedMessage, service.whatsappMessage);
+      assert.equal(originRegex.test(decodedMessage), false);
+      assert.equal(service.whatsappMessage, expectedServiceText);
 
-      assertValidWhatsAppOutput({
+      assertValidEmojiFreeWhatsAppOutput({
         label: `service-${service.id}`,
         originalMessage,
         url,
-        expectedEmojiCodePoints: [0x1F44B, 0x1F60A],
+        expectedExactText: expectedServiceText,
         expectedAccentedWords: ['Olá', 'orçamento'],
         expectedBoldSegments: ['*Garagem Mailasque*', `*${service.name}*`],
-        minLines: 5,
+        expectedLineCount: 5,
       });
     }
   });
 
-  it('5. Quote form template and multi-param builder preserve all structured fields and emoji code points without U+FFFD', () => {
+  it('4. Quote form and multi-parameter builder messages contain no emojis while preserving bold field labels and multiline structure', () => {
     const originalMessage = WHATSAPP_TEMPLATES.quoteForm({
       name: 'Carlos Oliveira',
       service: 'Funilaria',
@@ -287,28 +336,39 @@ describe('WhatsApp Message Builder & Emoji Encoding Regression Suite', () => {
       details: 'Batida leve no trânsito, sem vazamento de fluidos.',
     });
 
+    const expectedQuoteText = [
+      'Olá, *Garagem Mailasque*!',
+      '',
+      'Vim pelo site e gostaria de solicitar um *orçamento*.',
+      '',
+      '*Nome:* Carlos Oliveira',
+      '*Serviço:* Funilaria',
+      '*Veículo:* Toyota Corolla (2022)',
+      '*Seguro:* Sim, por seguro',
+      '*Peças a reparar:* Para-choque dianteiro, Capô',
+      '*Detalhes:* Batida leve no trânsito, sem vazamento de fluidos.',
+      '',
+      'Podem me orientar, por favor?',
+    ].join('\n');
+
     const url = buildWhatsAppUrl({
       originSection: 'site-form',
       customText: originalMessage,
     });
+    const decodedMessage = getDecodedText(url);
 
-    assertValidWhatsAppOutput({
+    assert.equal(originRegex.test(decodedMessage), false);
+    assert.equal(decodedMessage.includes('[site-form]'), false);
+
+    assertValidEmojiFreeWhatsAppOutput({
       label: 'quoteForm',
       originalMessage,
       url,
-      expectedEmojiCodePoints: [
-        0x1F44B, // wave
-        0x1F464, // user
-        0x1F6E0, // tools
-        0x1F697, // car
-        0x1F6E1, // shield
-        0x1F527, // wrench
-        0x1F4DD, // memo
-        0x1F60A, // smile
-      ],
+      expectedExactText: expectedQuoteText,
       expectedAccentedWords: ['Olá', 'orçamento', 'Serviço', 'Veículo', 'Peças', 'Capô', 'trânsito'],
       expectedBoldSegments: [
         '*Garagem Mailasque*',
+        '*orçamento*',
         '*Nome:*',
         '*Serviço:*',
         '*Veículo:*',
@@ -316,59 +376,57 @@ describe('WhatsApp Message Builder & Emoji Encoding Regression Suite', () => {
         '*Peças a reparar:*',
         '*Detalhes:*',
       ],
-      minLines: 11,
+      expectedLineCount: 12,
     });
 
-    // Multi-param builder direct call
+    // Multi-parameter builder
     const multiParamOriginal = buildWhatsAppMessage({
       service: 'Pintura',
       vehicle: 'Honda Civic',
       isInsurance: false,
     });
+    const expectedMultiParamText = [
+      'Olá, *Garagem Mailasque*!',
+      '',
+      'Vim pelo site e gostaria de solicitar um *orçamento*:',
+      '',
+      '*Serviço:* Pintura',
+      '*Veículo:* Honda Civic',
+      '*Seguro:* Não, particular',
+      '',
+      'Podem me orientar, por favor?',
+    ].join('\n');
     const multiParamUrl = buildWhatsAppUrl({
       service: 'Pintura',
       vehicle: 'Honda Civic',
       isInsurance: false,
     });
 
-    assertValidWhatsAppOutput({
+    assertValidEmojiFreeWhatsAppOutput({
       label: 'multiParamBuilder',
       originalMessage: multiParamOriginal,
       url: multiParamUrl,
-      expectedEmojiCodePoints: [0x1F44B, 0x1F6E0, 0x1F697, 0x1F6E1, 0x1F60A],
+      expectedExactText: expectedMultiParamText,
       expectedAccentedWords: ['Olá', 'orçamento', 'Serviço', 'Veículo', 'Não'],
-      expectedBoldSegments: ['*Garagem Mailasque*', '*Serviço:*', '*Veículo:*', '*Seguro:*'],
-      minLines: 8,
+      expectedBoldSegments: ['*Garagem Mailasque*', '*orçamento*', '*Serviço:*', '*Veículo:*', '*Seguro:*'],
+      expectedLineCount: 9,
     });
   });
 
-  it('6. User-written chat messages and floating chat fallback preserve exact text without U+FFFD', () => {
-    const userMessage = 'Boa tarde! Vocês trabalham com recuperação de parachoque de fibra?';
-    const urlWithUserInput = buildWhatsAppUrl({
+  it('5. Visitor-written messages in the floating chat remain completely unchanged', () => {
+    const visitorMessage = 'Boa tarde! Vocês fazem reparo no para-choque do Jeep Compass 2023?';
+    const url = buildWhatsAppUrl({
       originSection: 'chat-flutuante',
-      customText: userMessage,
+      customText: visitorMessage,
     });
-    const decodedWithInput = getDecodedText(urlWithUserInput);
+    const decoded = getDecodedText(url);
 
-    assert.equal(userMessage.includes('\uFFFD'), false);
-    assert.equal(decodedWithInput.includes('\uFFFD'), false);
-    assert.equal(userMessage, decodedWithInput);
-
-    const fallbackMessage = WHATSAPP_TEMPLATES.floatingChatFallback();
-    const urlWithFallback = buildWhatsAppUrl({
-      originSection: 'chat-flutuante',
-      customText: fallbackMessage,
-    });
-    const decodedWithFallback = getDecodedText(urlWithFallback);
-
-    assert.equal(fallbackMessage.includes('\uFFFD'), false);
-    assert.equal(decodedWithFallback.includes('\uFFFD'), false);
-    assert.equal(fallbackMessage, decodedWithFallback);
-    assert.equal(decodedWithFallback.includes(String.fromCodePoint(0x1F44B)), true);
-    assert.equal(decodedWithFallback.includes(String.fromCodePoint(0x1F60A)), true);
+    assert.equal(decoded, visitorMessage, 'Visitor-typed message must be preserved verbatim');
+    assert.equal(originRegex.test(decoded), false);
+    assert.equal(decoded.includes('\uFFFD'), false);
   });
 
-  it('7. Existing analytics tracking remains functional and does not receive message text or personal data', () => {
+  it('6. GA4/GTM analytics click tracking remains independent from customer-facing message text and strips PII', () => {
     const dirtyParams = {
       name: 'João da Silva',
       phone: '11999998888',

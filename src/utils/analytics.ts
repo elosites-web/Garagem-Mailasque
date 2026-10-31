@@ -70,8 +70,29 @@ export function sanitizeEventParams(params?: Record<string, unknown>): Record<st
   return cleaned;
 }
 
+export const GTM_ID_PATTERN = /^GTM-[A-Z0-9]+$/i;
+
+export const BEHAVIORAL_EVENTS = new Set([
+  'gallery_open',
+  'testimonial_spin',
+  'slider_interact',
+  'maps_click',
+  'simulator_use',
+  'chat_widget_toggle',
+]);
+
+export const CONVERSION_EVENTS = new Set([
+  'whatsapp_click',
+  'generate_lead',
+  'phone_click',
+]);
+
 /**
- * Obtém as preferências salvas no localStorage
+ * Obtém as preferências salvas no localStorage com validação estrita (deny-by-default).
+ * - Se gm_cookie_preferences_v2 não existir, estiver corrompido ou não for um objeto válido,
+ *   retorna todas as categorias opcionais como false.
+ * - Aceita analytics e marketing somente quando o valor for estritamente boolean true.
+ * - O registro legado (gm_cookie_consent_v1) nunca eleva permissões granulares.
  */
 export function getCookiePreferences(): CookiePreferences {
   if (typeof window === 'undefined') {
@@ -81,24 +102,19 @@ export function getCookiePreferences(): CookiePreferences {
   try {
     const raw = localStorage.getItem(PREFERENCES_STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        necessary: true,
-        analytics: Boolean(parsed.analytics),
-        marketing: Boolean(parsed.marketing),
-        updatedAt: parsed.updatedAt,
-      };
+      const parsed: unknown = JSON.parse(raw);
+      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const record = parsed as Record<string, unknown>;
+        return {
+          necessary: true,
+          analytics: record.analytics === true,
+          marketing: record.marketing === true,
+          updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : undefined,
+        };
+      }
     }
   } catch {
-    // fallback
-  }
-
-  // Compatibilidade com v1 se já houver consentimento simples
-  const legacy = getRawStoredConsent();
-  if (legacy === 'granted') {
-    return { necessary: true, analytics: true, marketing: true };
-  } else if (legacy === 'denied') {
-    return { necessary: true, analytics: false, marketing: false };
+    // Em caso de JSON inválido ou falha de leitura, mantém opcionais desativados
   }
 
   return { necessary: true, analytics: false, marketing: false };
@@ -139,11 +155,11 @@ export function getStoredConsent(): AnalyticsConsent {
 }
 
 export function isAnalyticsAllowed(): boolean {
-  return getStoredConsent() === 'granted' && getCookiePreferences().analytics;
+  return getStoredConsent() === 'granted' && getCookiePreferences().analytics === true;
 }
 
 export function isMarketingAllowed(): boolean {
-  return getStoredConsent() === 'granted' && getCookiePreferences().marketing;
+  return getStoredConsent() === 'granted' && getCookiePreferences().marketing === true;
 }
 
 export function setStoredConsent(consent: 'granted' | 'denied'): void {
@@ -161,13 +177,15 @@ export function setStoredConsent(consent: 'granted' | 'denied'): void {
 export function saveCookiePreferences(prefs: { analytics: boolean; marketing: boolean }): void {
   if (typeof window === 'undefined') return;
 
-  const isAnyGranted = prefs.analytics || prefs.marketing;
+  const analytics = prefs.analytics === true;
+  const marketing = prefs.marketing === true;
+  const isAnyGranted = analytics || marketing;
   const status: AnalyticsConsent = isAnyGranted ? 'granted' : 'denied';
 
   const payload: CookiePreferences = {
     necessary: true,
-    analytics: prefs.analytics,
-    marketing: prefs.marketing,
+    analytics,
+    marketing,
     updatedAt: new Date().toISOString(),
   };
 
@@ -189,14 +207,32 @@ export function saveCookiePreferences(prefs: { analytics: boolean; marketing: bo
   }
 }
 
+/**
+ * Valida se o ID do GTM segue estritamente o formato oficial GTM-XXXX
+ */
+export function isValidGtmId(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  return GTM_ID_PATTERN.test(trimmed);
+}
+
 export function getGtmId(): string | undefined {
+  let rawId: unknown;
+
   if (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_GTM_ID) {
-    return import.meta.env.VITE_GTM_ID;
+    rawId = import.meta.env.VITE_GTM_ID;
+  } else if (typeof process !== 'undefined' && process.env?.VITE_GTM_ID) {
+    rawId = process.env.VITE_GTM_ID;
   }
-  if (typeof process !== 'undefined' && process.env?.VITE_GTM_ID) {
-    return process.env.VITE_GTM_ID;
+
+  if (typeof rawId !== 'string') return undefined;
+
+  const trimmed = rawId.trim();
+  if (!GTM_ID_PATTERN.test(trimmed)) {
+    return undefined;
   }
-  return undefined;
+
+  return trimmed;
 }
 
 export function hasAnalyticsConfigured(): boolean {
@@ -217,14 +253,30 @@ export function ensureGtagStub(): void {
   }
 }
 
+function hasDefaultConsentInDataLayer(): boolean {
+  if (typeof window === 'undefined' || !Array.isArray(window.dataLayer)) {
+    return false;
+  }
+  return window.dataLayer.some((entry) => {
+    if (!entry || typeof entry !== 'object') return false;
+    const args = entry as ArrayLike<unknown>;
+    return args[0] === 'consent' && args[1] === 'default';
+  });
+}
+
 /**
  * Configura o estado padrão do Google Consent Mode v2 antes do disparo de quaisquer tags.
  * Deve ser chamado antes de carregar o GTM para que a inicialização do container
  * leia os sinais de consentimento prévio ou negado.
+ * Possui proteção de idempotência para evitar entradas duplicadas de 'consent default'.
  */
 export function setupDefaultConsentMode(): void {
   if (typeof window === 'undefined') return;
   ensureGtagStub();
+
+  if (hasDefaultConsentInDataLayer()) {
+    return;
+  }
 
   const prefs = getCookiePreferences();
   const consent = getStoredConsent();
@@ -247,17 +299,17 @@ export function updateConsentMode(prefs: CookiePreferences): void {
   ensureGtagStub();
 
   window.gtag!('consent', 'update', {
-    analytics_storage: prefs.analytics ? 'granted' : 'denied',
-    ad_storage: prefs.marketing ? 'granted' : 'denied',
-    ad_user_data: prefs.marketing ? 'granted' : 'denied',
-    ad_personalization: prefs.marketing ? 'granted' : 'denied',
+    analytics_storage: prefs.analytics === true ? 'granted' : 'denied',
+    ad_storage: prefs.marketing === true ? 'granted' : 'denied',
+    ad_user_data: prefs.marketing === true ? 'granted' : 'denied',
+    ad_personalization: prefs.marketing === true ? 'granted' : 'denied',
   });
 }
 
 /**
  * Carrega dinamicamente o script do Google Tag Manager (GTM)
- * SOMENTE se houver consentimento para pelo menos uma categoria opcional
- * e se VITE_GTM_ID estiver configurado no ambiente.
+ * SOMENTE se houver consentimento válido para pelo menos uma categoria opcional
+ * e se VITE_GTM_ID estiver configurado e validado no ambiente.
  *
  * NOTA DE ARQUITETURA:
  * O GTM é o único proprietário de tags (Single Tag Owner).
@@ -267,47 +319,53 @@ export function updateConsentMode(prefs: CookiePreferences): void {
 export function initAnalyticsIfConsented(): void {
   if (typeof window === 'undefined') return;
 
-  const consent = getStoredConsent();
-  if (consent !== 'granted') return;
-
-  const prefs = getCookiePreferences();
-  if (!prefs.analytics && !prefs.marketing) return;
+  if (!isAnalyticsAllowed() && !isMarketingAllowed()) return;
 
   const gtmId = getGtmId();
   if (!gtmId) return;
+
+  const prefs = getCookiePreferences();
 
   // Atualiza Google Consent Mode v2 com escolhas ativas
   updateConsentMode(prefs);
 
   if (!document.getElementById('gtm-script')) {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      'gtm.start': new Date().getTime(),
+      event: 'gtm.js',
+    });
+
     const script = document.createElement('script');
     script.id = 'gtm-script';
     script.async = true;
-    script.innerHTML = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${gtmId}');`;
+    script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(gtmId)}`;
     document.head.appendChild(script);
   }
 }
 
 /**
- * Disparo centralizado de eventos analíticos no dataLayer.
+ * Disparo centralizado de eventos analíticos e de conversão no dataLayer.
  *
  * Estratégia Single Tag Owner (GTM):
  * - Envia eventos exclusivamente via window.dataLayer.push({ event, ...params })
- * - Não efetua chamadas diretas via window.gtag('event') ou window.fbq()
- * - Se o consentimento não foi concedido ou foi revogado, bloqueia o envio imediatamente
+ * - Eventos comportamentais exigem exclusivamente isAnalyticsAllowed()
+ * - Eventos de conversão exigem isAnalyticsAllowed() || isMarketingAllowed()
+ * - Eventos desconhecidos são bloqueados por padrão
  */
 export function trackEvent(eventName: string, params?: Record<string, unknown>): void {
   if (typeof window === 'undefined') return;
 
-  const consent = getStoredConsent();
-  const prefs = getCookiePreferences();
-
-  // Bloqueio rigoroso: não dispara eventos se o consentimento não foi concedido ou se ambas as categorias opcionais foram recusadas
-  if (consent !== 'granted' || (!prefs.analytics && !prefs.marketing)) {
+  if (CONVERSION_EVENTS.has(eventName)) {
+    if (!isAnalyticsAllowed() && !isMarketingAllowed()) {
+      return;
+    }
+  } else if (BEHAVIORAL_EVENTS.has(eventName)) {
+    if (!isAnalyticsAllowed()) {
+      return;
+    }
+  } else {
+    // Eventos desconhecidos são bloqueados por segurança
     return;
   }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { X, Send, ArrowDownRight, CheckCheck } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
-import { buildWhatsAppUrl, isWorkshopOpenNow, WHATSAPP_EMOJIS, WHATSAPP_TEMPLATES } from '../data/business';
+import { buildWhatsAppUrl, isWorkshopOpenNow, WHATSAPP_TEMPLATES } from '../data/business';
 import { trackEvent, trackWhatsAppConversion } from '../utils/analytics';
 
 export const FloatingWhatsApp: React.FC = () => {
@@ -341,7 +341,7 @@ export const FloatingWhatsApp: React.FC = () => {
               {/* Balão de Mensagem de Boas-Vindas */}
               <div className="relative max-w-[85%] bg-[#202C33] text-neutral-100 rounded-2xl rounded-tl-sm px-3.5 py-2.5 shadow-md border border-neutral-700/50">
                 <p className="text-xs leading-relaxed">
-                  Olá! Seja muito bem-vindo à <strong className="text-white">Garagem Mailasque</strong>. {WHATSAPP_EMOJIS.wave}
+                  Olá! Seja muito bem-vindo à <strong className="text-white">Garagem Mailasque</strong>.
                 </p>
                 <p className="text-xs leading-relaxed mt-1.5 text-neutral-300">
                   Como podemos ajudar com a funilaria ou pintura do seu carro hoje? Digite sua dúvida ou peça seu orçamento abaixo:
@@ -505,9 +505,9 @@ export const FloatingWhatsApp: React.FC = () => {
 
             {/* Conteúdo Centralizado */}
             <div className="flex flex-col items-center text-center px-1" aria-live="polite">
-              {/* Topo: Avatar + Nome da Oficina + Status Online (alinhado à esquerda) */}
-              <div className="w-full flex items-center justify-start gap-1.5 mb-1">
-                <div className="relative shrink-0">
+              {/* Topo: Avatar + Nome da Oficina em linha única + Status abaixo */}
+              <div className="w-full grid grid-cols-[auto_1fr] items-center justify-items-start gap-x-2 gap-y-0.5 text-left mb-1.5">
+                <div className="relative shrink-0 row-span-2">
                   <div className="w-6 h-6 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center overflow-hidden">
                     <img
                       src="/assets/garagemailasque/logo-garagem-mailasque.png"
@@ -523,13 +523,17 @@ export const FloatingWhatsApp: React.FC = () => {
                     }`}
                   />
                 </div>
-                <span className="text-xs font-semibold text-white group-hover:text-[#F97316] transition-colors">
+                <span className="col-start-2 text-xs font-semibold text-white whitespace-nowrap leading-tight group-hover:text-[#F97316] transition-colors">
                   Garagem Mailasque
                 </span>
                 {isOnline ? (
-                  <span className="text-[10px] text-[#25D366] font-medium shrink-0">· Online</span>
+                  <span className="col-start-2 text-[10px] text-[#25D366] font-medium whitespace-nowrap leading-tight">
+                    Online
+                  </span>
                 ) : (
-                  <span className="text-[10px] text-[#F59E0B] font-medium shrink-0">· Responderemos em breve</span>
+                  <span className="col-start-2 text-[10px] text-[#F59E0B] font-medium whitespace-nowrap leading-tight">
+                    Responderemos em breve
+                  </span>
                 )}
               </div>
 

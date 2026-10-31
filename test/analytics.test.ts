@@ -105,11 +105,17 @@ import {
   getStoredConsent,
   getCookiePreferences,
   saveCookiePreferences,
+  isAnalyticsAllowed,
+  isMarketingAllowed,
+  isValidGtmId,
+  getGtmId,
   trackEvent,
   trackWhatsAppConversion,
   trackPhoneConversion,
   trackLeadSubmission,
   sanitizeEventParams,
+  BEHAVIORAL_EVENTS,
+  CONVERSION_EVENTS,
   CONSENT_STORAGE_KEY,
   PREFERENCES_STORAGE_KEY,
 } from '../src/utils/analytics.js';
@@ -120,6 +126,9 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
     mockHead.children = [];
     mockWindow.dataLayer = [];
     delete (mockWindow as Record<string, unknown>).gtag;
+    if (typeof process !== 'undefined') {
+      process.env.VITE_GTM_ID = 'GTM-TEST123';
+    }
   });
 
   it('1. Default Consent Mode v2 values are pushed to dataLayer with all denied before consent choice', () => {
@@ -460,5 +469,297 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
     assert.strictEqual(leadEventsBlocked.length, 0, 'generate_lead must be blocked post-revocation');
     assert.strictEqual(headerEventsBlocked.length, 0, 'whatsapp_click must be blocked post-revocation');
   });
+
+  it('13. getCookiePreferences: empty localStorage, invalid JSON, JSON null, array, and empty object all deny optional categories', () => {
+    // 1. localStorage vazio
+    mockStorage.clear();
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+    });
+
+    // 2. JSON inválido
+    mockStorage.setItem(PREFERENCES_STORAGE_KEY, '{invalid-json');
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+    });
+
+    // 3. JSON null
+    mockStorage.setItem(PREFERENCES_STORAGE_KEY, 'null');
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+    });
+
+    // 4. JSON array
+    mockStorage.setItem(PREFERENCES_STORAGE_KEY, '["analytics","marketing"]');
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+    });
+
+    // 5. Objeto vazio
+    mockStorage.setItem(PREFERENCES_STORAGE_KEY, '{}');
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+      updatedAt: undefined,
+    });
+  });
+
+  it('14. getCookiePreferences: strings "false" and "true", numbers, and non-booleans never grant permissions; only strict boolean true is accepted', () => {
+    // Strings "false" e "true"
+    mockStorage.setItem(
+      PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ necessary: true, analytics: 'false', marketing: 'true' })
+    );
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+      updatedAt: undefined,
+    });
+
+    // Números 1 e 0
+    mockStorage.setItem(
+      PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ necessary: true, analytics: 1, marketing: 0 })
+    );
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+      updatedAt: undefined,
+    });
+
+    // Valores booleanos verdadeiros e falsos
+    mockStorage.setItem(
+      PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ necessary: false, analytics: true, marketing: false, updatedAt: '2026-10-30T00:00:00.000Z' })
+    );
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: true,
+      marketing: false,
+      updatedAt: '2026-10-30T00:00:00.000Z',
+    });
+
+    mockStorage.setItem(
+      PREFERENCES_STORAGE_KEY,
+      JSON.stringify({ necessary: true, analytics: false, marketing: true })
+    );
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: true,
+      updatedAt: undefined,
+    });
+  });
+
+  it('15. Legacy key gm_cookie_consent_v1 = granted never elevates permissions when v2 is missing or corrupted', () => {
+    // Registro legado isolado (v2 ausente)
+    mockStorage.clear();
+    mockStorage.setItem(CONSENT_STORAGE_KEY, 'granted');
+
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+    });
+    assert.strictEqual(getStoredConsent(), 'denied');
+    assert.strictEqual(isAnalyticsAllowed(), false);
+    assert.strictEqual(isMarketingAllowed(), false);
+
+    // Registro legado concedido com preferências granulares corrompidas
+    mockStorage.setItem(PREFERENCES_STORAGE_KEY, '{corrupted_json');
+    assert.deepStrictEqual(getCookiePreferences(), {
+      necessary: true,
+      analytics: false,
+      marketing: false,
+    });
+    assert.strictEqual(getStoredConsent(), 'denied');
+    assert.strictEqual(isAnalyticsAllowed(), false);
+    assert.strictEqual(isMarketingAllowed(), false);
+
+    // Garante que dados existentes no localStorage não foram apagados arbitrariamente
+    assert.strictEqual(mockStorage.getItem(CONSENT_STORAGE_KEY), 'granted');
+    assert.strictEqual(mockStorage.getItem(PREFERENCES_STORAGE_KEY), '{corrupted_json');
+  });
+
+  it('16. Behavioral events require Analytics consent and are blocked when only Marketing is granted', () => {
+    const behavioralEventNames = Array.from(BEHAVIORAL_EVENTS);
+    assert.strictEqual(behavioralEventNames.length, 6);
+
+    // Cenário A: Apenas Marketing autorizado (analytics: false, marketing: true)
+    saveCookiePreferences({ analytics: false, marketing: true });
+    assert.strictEqual(isAnalyticsAllowed(), false);
+    assert.strictEqual(isMarketingAllowed(), true);
+
+    for (const evt of behavioralEventNames) {
+      trackEvent(evt, { section: 'test-section' });
+    }
+
+    const dispatchedWhileMarketingOnly = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => typeof item.event === 'string' && BEHAVIORAL_EVENTS.has(item.event)
+    );
+    assert.strictEqual(
+      dispatchedWhileMarketingOnly.length,
+      0,
+      'Behavioral events must NOT be sent when only Marketing is granted'
+    );
+
+    // Cenário B: Apenas Analytics autorizado (analytics: true, marketing: false)
+    saveCookiePreferences({ analytics: true, marketing: false });
+    assert.strictEqual(isAnalyticsAllowed(), true);
+    assert.strictEqual(isMarketingAllowed(), false);
+
+    for (const evt of behavioralEventNames) {
+      trackEvent(evt, { section: 'test-section' });
+    }
+
+    const dispatchedWhileAnalytics = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => typeof item.event === 'string' && BEHAVIORAL_EVENTS.has(item.event)
+    );
+    assert.strictEqual(
+      dispatchedWhileAnalytics.length,
+      behavioralEventNames.length,
+      'All behavioral events must be sent when Analytics is granted'
+    );
+  });
+
+  it('17. Conversion events are allowed with Analytics-only, Marketing-only, or full consent, and blocked when denied', () => {
+    const conversionEventNames = Array.from(CONVERSION_EVENTS);
+    assert.strictEqual(conversionEventNames.length, 3);
+
+    // 1. Apenas Marketing
+    saveCookiePreferences({ analytics: false, marketing: true });
+    for (const evt of conversionEventNames) {
+      trackEvent(evt, { section: 'mkt-only' });
+    }
+    const mktEvents = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.section === 'mkt-only'
+    );
+    assert.strictEqual(mktEvents.length, 3, 'Conversions must be pushed when Marketing is allowed');
+
+    // 2. Apenas Analytics
+    saveCookiePreferences({ analytics: true, marketing: false });
+    for (const evt of conversionEventNames) {
+      trackEvent(evt, { section: 'ana-only' });
+    }
+    const anaEvents = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.section === 'ana-only'
+    );
+    assert.strictEqual(anaEvents.length, 3, 'Conversions must be pushed when Analytics is allowed');
+
+    // 3. Consentimento completo
+    saveCookiePreferences({ analytics: true, marketing: true });
+    for (const evt of conversionEventNames) {
+      trackEvent(evt, { section: 'both-allowed' });
+    }
+    const bothEvents = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.section === 'both-allowed'
+    );
+    assert.strictEqual(bothEvents.length, 3, 'Conversions must be pushed when both categories are allowed');
+
+    // 4. Ambos negados
+    saveCookiePreferences({ analytics: false, marketing: false });
+    for (const evt of conversionEventNames) {
+      trackEvent(evt, { section: 'none-allowed' });
+    }
+    const noneEvents = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.section === 'none-allowed'
+    );
+    assert.strictEqual(noneEvents.length, 0, 'Conversions must be blocked when both categories are denied');
+  });
+
+  it('18. Unknown events are strictly blocked even with full consent', () => {
+    saveCookiePreferences({ analytics: true, marketing: true });
+
+    const beforeCount = (mockWindow.dataLayer as unknown[]).length;
+    trackEvent('unknown_custom_event', { section: 'hero' });
+    trackEvent('arbitrary_injection', { action: 'click' });
+    const afterCount = (mockWindow.dataLayer as unknown[]).length;
+
+    assert.strictEqual(afterCount, beforeCount, 'Unknown events must never be pushed to dataLayer');
+  });
+
+  it('19. GTM ID validation trims whitespace, accepts valid GTM-XXXX IDs, and rejects malformed IDs', () => {
+    assert.strictEqual(isValidGtmId('GTM-ABC1234'), true);
+    assert.strictEqual(isValidGtmId('  gtm-99xyz  '), true);
+    assert.strictEqual(isValidGtmId(''), false);
+    assert.strictEqual(isValidGtmId('   '), false);
+    assert.strictEqual(isValidGtmId('G-12345678'), false);
+    assert.strictEqual(isValidGtmId('AW-123456'), false);
+    assert.strictEqual(isValidGtmId('GTM-'), false);
+    assert.strictEqual(isValidGtmId("GTM-123');alert(1)//"), false);
+    assert.strictEqual(isValidGtmId(null), false);
+    assert.strictEqual(isValidGtmId(undefined), false);
+
+    // Testa getGtmId() com trim e rejeição de ID malformado
+    process.env.VITE_GTM_ID = '  GTM-VALID99  ';
+    assert.strictEqual(getGtmId(), 'GTM-VALID99');
+
+    process.env.VITE_GTM_ID = "GTM-BAD');alert(1);//";
+    assert.strictEqual(getGtmId(), undefined);
+
+    saveCookiePreferences({ analytics: true, marketing: true });
+    initAnalyticsIfConsented();
+    assert.strictEqual(
+      mockDocument.getElementById('gtm-script'),
+      null,
+      'Malformed GTM ID must never inject a script element'
+    );
+  });
+
+  it('20. GTM script uses external script.src without script.innerHTML and prevents duplicate container injection', () => {
+    process.env.VITE_GTM_ID = '  GTM-SAFE777  ';
+    saveCookiePreferences({ analytics: true, marketing: true });
+
+    initAnalyticsIfConsented();
+    initAnalyticsIfConsented(); // Segunda chamada deve ser ignorada para injeção do script
+
+    const gtmScripts = mockHead.children.filter((el) => el.id === 'gtm-script');
+    assert.strictEqual(gtmScripts.length, 1, 'GTM container script must be injected at most once');
+
+    const script = gtmScripts[0];
+    assert.strictEqual(script.async, true);
+    assert.strictEqual(script.src, 'https://www.googletagmanager.com/gtm.js?id=GTM-SAFE777');
+    assert.strictEqual(script.innerHTML, '', 'script.innerHTML must not be used');
+
+    const gtmStartEvents = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item && typeof item === 'object' && item.event === 'gtm.js' && typeof item['gtm.start'] === 'number'
+    );
+    assert.strictEqual(gtmStartEvents.length, 1, 'gtm.js initialization event must be pushed once to dataLayer');
+  });
+
+  it('21. setupDefaultConsentMode is idempotent and does not push duplicate consent default entries', () => {
+    setupDefaultConsentMode();
+    setupDefaultConsentMode();
+    setupDefaultConsentMode();
+
+    const defaultCalls = (mockWindow.dataLayer as unknown[]).filter((entry) => {
+      if (!entry || typeof entry !== 'object') return false;
+      const args = entry as ArrayLike<unknown>;
+      return args[0] === 'consent' && args[1] === 'default';
+    });
+
+    assert.strictEqual(defaultCalls.length, 1, 'consent default must only be pushed once per initialization');
+
+    // Confirma que atualizações posteriores de consentimento continuam funcionando normalmente
+    saveCookiePreferences({ analytics: true, marketing: false });
+    const updateCalls = (mockWindow.dataLayer as unknown[]).filter((entry) => {
+      if (!entry || typeof entry !== 'object') return false;
+      const args = entry as ArrayLike<unknown>;
+      return args[0] === 'consent' && args[1] === 'update';
+    });
+    assert.strictEqual(updateCalls.length, 1, 'subsequent consent update must still be recorded');
+  });
 });
+
 
