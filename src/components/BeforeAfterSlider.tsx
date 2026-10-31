@@ -327,7 +327,7 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => trackEvent('whatsapp_click', { section: 'before-after-cta' })}
+                  onClick={() => trackWhatsAppConversion('before-after-cta')}
                   className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-[#0A0A0A] font-extrabold text-xs sm:text-sm tracking-wide transition-all duration-150 shrink-0 shadow-lg hover:shadow-[#F97316]/20 focus-visible:outline-2 focus-visible:outline-[#F97316] self-center md:self-auto"
                 >
                   <WhatsAppIcon className="w-4 h-4 shrink-0 fill-current" />

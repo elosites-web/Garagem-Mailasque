@@ -1,5 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Mock do ambiente de browser para o Node.js
 class MockLocalStorage {
@@ -760,6 +762,243 @@ describe('Google Consent Mode v2 & GTM Single Tag Owner Suite', () => {
     });
     assert.strictEqual(updateCalls.length, 1, 'subsequent consent update must still be recorded');
   });
+
+  it('22. Partial consent downgrade (Analytics + Marketing -> Marketing only) immediately blocks behavioral events while keeping conversions allowed', () => {
+    // 1. Concede consentimento completo
+    saveCookiePreferences({ analytics: true, marketing: true });
+    assert.strictEqual(isAnalyticsAllowed(), true);
+    assert.strictEqual(isMarketingAllowed(), true);
+
+    trackEvent('gallery_open', { section: 'before-downgrade' });
+    trackWhatsAppConversion('before-downgrade');
+
+    const galleryBefore = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.event === 'gallery_open' && item.section === 'before-downgrade'
+    );
+    const whatsappBefore = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.event === 'whatsapp_click' && item.section === 'before-downgrade'
+    );
+    assert.strictEqual(galleryBefore.length, 1);
+    assert.strictEqual(whatsappBefore.length, 1);
+
+    // 2. Rebaixa para somente Marketing
+    saveCookiePreferences({ analytics: false, marketing: true });
+    assert.strictEqual(isAnalyticsAllowed(), false);
+    assert.strictEqual(isMarketingAllowed(), true);
+
+    const lastConsentUpdate = mockWindow.dataLayer[mockWindow.dataLayer.length - 1] as unknown[];
+    assert.strictEqual(lastConsentUpdate[0], 'consent');
+    assert.strictEqual(lastConsentUpdate[1], 'update');
+    const updatePayload = lastConsentUpdate[2] as Record<string, string>;
+    assert.strictEqual(updatePayload.analytics_storage, 'denied');
+    assert.strictEqual(updatePayload.ad_storage, 'granted');
+    assert.strictEqual(updatePayload.ad_user_data, 'granted');
+    assert.strictEqual(updatePayload.ad_personalization, 'granted');
+
+    // 3. Eventos comportamentais agora são bloqueados, mas conversões continuam permitidas
+    trackEvent('gallery_open', { section: 'after-downgrade' });
+    trackWhatsAppConversion('after-downgrade');
+
+    const galleryAfter = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.event === 'gallery_open' && item.section === 'after-downgrade'
+    );
+    const whatsappAfter = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.event === 'whatsapp_click' && item.section === 'after-downgrade'
+    );
+    assert.strictEqual(galleryAfter.length, 0, 'Behavioral event must be blocked after Analytics downgrade');
+    assert.strictEqual(whatsappAfter.length, 1, 'Conversion event must remain allowed under Marketing consent');
+  });
+
+  it('23. Page reload simulation with previously saved preferences initializes setupDefaultConsentMode with exact stored categories', () => {
+    // Visitante salva apenas Analytics e recarrega a página
+    saveCookiePreferences({ analytics: true, marketing: false });
+
+    // Simula reload do navegador (dataLayer e DOM limpos, mas localStorage mantido)
+    mockWindow.dataLayer = [];
+    mockHead.children = [];
+    delete (mockWindow as Record<string, unknown>).gtag;
+
+    setupDefaultConsentMode();
+
+    assert.strictEqual(mockWindow.dataLayer.length, 1);
+    const defaultCall = mockWindow.dataLayer[0] as unknown[];
+    assert.strictEqual(defaultCall[0], 'consent');
+    assert.strictEqual(defaultCall[1], 'default');
+    const defaultConfig = defaultCall[2] as Record<string, unknown>;
+    assert.strictEqual(defaultConfig.analytics_storage, 'granted');
+    assert.strictEqual(defaultConfig.ad_storage, 'denied');
+    assert.strictEqual(defaultConfig.ad_user_data, 'denied');
+    assert.strictEqual(defaultConfig.ad_personalization, 'denied');
+  });
+
+  it('24. sanitizeEventParams truncates strings longer than 100 chars and strips nested objects, arrays, and functions', () => {
+    const longString = 'A'.repeat(160);
+    const sanitized = sanitizeEventParams({
+      long_label: longString,
+      short_label: 'Pintura Automotiva',
+      nested_obj: { secret: 'value' },
+      nested_arr: ['a', 'b', 'c'],
+      fn_param: () => 'noop',
+      undef_param: undefined,
+      null_param: null,
+      count: 4,
+      active: true,
+    });
+
+    assert.strictEqual(typeof sanitized.long_label, 'string');
+    assert.strictEqual((sanitized.long_label as string).length, 100);
+    assert.strictEqual(sanitized.long_label, 'A'.repeat(100));
+    assert.strictEqual(sanitized.short_label, 'Pintura Automotiva');
+    assert.strictEqual(sanitized.count, 4);
+    assert.strictEqual(sanitized.active, true);
+    assert.strictEqual('nested_obj' in sanitized, false);
+    assert.strictEqual('nested_arr' in sanitized, false);
+    assert.strictEqual('fn_param' in sanitized, false);
+    assert.strictEqual('undef_param' in sanitized, false);
+    assert.strictEqual('null_param' in sanitized, false);
+  });
+
+  it('25. localStorage unavailability or exceptions are handled gracefully with restrictive fallback', () => {
+    const throwingStorage = {
+      getItem(): string | null {
+        throw new Error('SecurityError: localStorage disabled');
+      },
+      setItem(): void {
+        throw new Error('QuotaExceededError');
+      },
+      removeItem(): void {
+        throw new Error('SecurityError');
+      },
+      clear(): void {
+        throw new Error('SecurityError');
+      },
+    };
+
+    (globalThis as unknown as { localStorage: typeof throwingStorage }).localStorage = throwingStorage;
+
+    try {
+      assert.doesNotThrow(() => {
+        const prefs = getCookiePreferences();
+        assert.deepStrictEqual(prefs, {
+          necessary: true,
+          analytics: false,
+          marketing: false,
+        });
+        assert.strictEqual(getStoredConsent(), 'pending');
+        assert.strictEqual(isAnalyticsAllowed(), false);
+        assert.strictEqual(isMarketingAllowed(), false);
+
+        saveCookiePreferences({ analytics: true, marketing: true });
+        trackWhatsAppConversion('hero');
+      });
+
+      // Como o armazenamento falhou ao persistir, o status permanece restritivo ('pending') e nenhum evento de tracking é enviado
+      const events = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+        (item) => item && typeof item === 'object' && item.event === 'whatsapp_click'
+      );
+      assert.strictEqual(events.length, 0, 'Tracking events must remain blocked when storage fails');
+    } finally {
+      (globalThis as unknown as { localStorage: MockLocalStorage }).localStorage = mockStorage;
+    }
+  });
+
+  it('26. All 9 official event identifiers are preserved without renaming or translation', () => {
+    const expectedBehavioral = [
+      'gallery_open',
+      'testimonial_spin',
+      'slider_interact',
+      'maps_click',
+      'simulator_use',
+      'chat_widget_toggle',
+    ];
+    const expectedConversions = [
+      'whatsapp_click',
+      'generate_lead',
+      'phone_click',
+    ];
+
+    assert.deepStrictEqual(Array.from(BEHAVIORAL_EVENTS).sort(), expectedBehavioral.slice().sort());
+    assert.deepStrictEqual(Array.from(CONVERSION_EVENTS).sort(), expectedConversions.slice().sort());
+  });
+
+  it('27. BeforeAfterSlider CTA uses standardized trackWhatsAppConversion("before-after-cta") with channel: "whatsapp"', () => {
+    const sliderSource = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/BeforeAfterSlider.tsx'),
+      'utf8'
+    );
+
+    assert.ok(
+      sliderSource.includes("trackWhatsAppConversion('before-after-cta')"),
+      'BeforeAfterSlider must call trackWhatsAppConversion("before-after-cta")'
+    );
+    assert.strictEqual(
+      sliderSource.includes("trackEvent('whatsapp_click'"),
+      false,
+      'BeforeAfterSlider must not bypass trackWhatsAppConversion with direct trackEvent("whatsapp_click")'
+    );
+
+    saveCookiePreferences({ analytics: true, marketing: true });
+    trackWhatsAppConversion('before-after-cta');
+
+    const events = (mockWindow.dataLayer as Record<string, unknown>[]).filter(
+      (item) => item.event === 'whatsapp_click' && item.section === 'before-after-cta'
+    );
+    assert.strictEqual(events.length, 1);
+    assert.strictEqual(events[0].channel, 'whatsapp');
+  });
+
+  it('28. QuoteForm removes visitor phone collection and Location requires explicit click to load Google Maps iframe', () => {
+    const quoteFormSource = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/QuoteForm.tsx'),
+      'utf8'
+    );
+    assert.strictEqual(quoteFormSource.includes('form-phone'), false, 'QuoteForm must not render #form-phone input');
+    assert.strictEqual(quoteFormSource.includes('formatPhone'), false, 'QuoteForm must not contain formatPhone helper');
+    assert.strictEqual(quoteFormSource.includes('handlePhoneChange'), false, 'QuoteForm must not contain handlePhoneChange');
+    assert.strictEqual(quoteFormSource.includes('WhatsApp com DDD'), false, 'QuoteForm must not ask for visitor WhatsApp number');
+
+    const locationSource = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/Location.tsx'),
+      'utf8'
+    );
+    assert.strictEqual(
+      locationSource.includes('IntersectionObserver'),
+      false,
+      'Location must not auto-load Google Maps via IntersectionObserver'
+    );
+    assert.ok(
+      locationSource.includes('Carregar mapa interativo'),
+      'Location must provide explicit "Carregar mapa interativo" button'
+    );
+    assert.ok(
+      locationSource.includes('Abrir no Google Maps'),
+      'Location must provide separate "Abrir no Google Maps" external link'
+    );
+    assert.ok(
+      locationSource.includes('businessData.social.googleMaps'),
+      'Location must use official businessData.social.googleMaps URL'
+    );
+
+    const privacySource = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/PrivacyModal.tsx'),
+      'utf8'
+    );
+    assert.strictEqual(
+      privacySource.includes('Meta Ads'),
+      false,
+      'PrivacyModal must not mention Meta Ads'
+    );
+    assert.strictEqual(
+      privacySource.includes('Meta Pixel'),
+      false,
+      'PrivacyModal must not mention Meta Pixel'
+    );
+    assert.ok(
+      privacySource.includes('O formulário do site não coleta seu número de telefone'),
+      'PrivacyModal must explicitly state that the website form does not collect the visitor phone number'
+    );
+  });
 });
+
 
 

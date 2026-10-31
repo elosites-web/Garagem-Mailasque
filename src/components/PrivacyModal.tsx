@@ -218,69 +218,86 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
               </div>
 
               <p>
-                Esta Política de Privacidade foi elaborada com base nas diretrizes da{' '}
+                Esta Política de Privacidade foi elaborada considerando as diretrizes da{' '}
                 <strong className="text-[#F5F5F5]">Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 - LGPD)</strong>{' '}
-                e no Marco Civil da Internet (Lei nº 12.965/2014), apresentando de forma transparente como a Garagem Mailasque
+                e do Marco Civil da Internet (Lei nº 12.965/2014), apresentando de forma transparente como a Garagem Mailasque
                 trata dados pessoais ao disponibilizar este website institucional e os canais de atendimento comercial.
               </p>
 
               <h3 className="text-base font-bold text-[#F5F5F5] pt-2">1. Dados Pessoais Tratados e Forma de Coleta</h3>
               <p>
-                A Garagem Mailasque atua sob o princípio da necessidade e minimização de dados, coletando exclusivamente as informações essenciais para atender à sua solicitação de orçamento técnico e contato comercial:
+                A Garagem Mailasque atua sob o princípio da necessidade e minimização de dados, solicitando apenas as informações essenciais para atender à sua solicitação de orçamento técnico e contato comercial:
               </p>
               <ul className="list-disc pl-5 space-y-1.5 text-[#C9CDD2]">
                 <li>
-                  <strong className="text-[#F5F5F5]">Identificação e Contato:</strong> Nome completo e telefone celular com DDD (WhatsApp), fornecidos voluntariamente pelo usuário ao preencher o formulário ou iniciar contato direto.
+                  <strong className="text-[#F5F5F5]">Formulário de Orçamento no Site:</strong> Solicita exclusivamente seu nome, modelo do veículo, ano (opcional), serviço desejado, peças ou regiões a reparar (opcional), observações sobre o dano (opcional) e a indicação de atendimento particular ou por seguradora. <strong className="text-[#F5F5F5]">O formulário do site não coleta seu número de telefone.</strong>
                 </li>
                 <li>
-                  <strong className="text-[#F5F5F5]">Dados do Veículo e do Serviço:</strong> Marca, modelo, ano de fabricação, serviço desejado (ex.: funilaria, pintura na estufa, martelinho de ouro, sinistro) e fotos ou descrição dos danos para pré-avaliação.
+                  <strong className="text-[#F5F5F5]">Atendimento via WhatsApp:</strong> Ao clicar nos botões de orçamento ou enviar o formulário, o site gera uma mensagem de texto estruturada e redireciona você para o aplicativo ou página oficial do WhatsApp. Somente quando você inicia e envia a conversa no WhatsApp é que seu número de telefone, perfil público e eventuais fotos ou mensagens enviadas diretamente na conversa passam a ser visíveis para a nossa equipe de atendimento.
                 </li>
                 <li>
-                  <strong className="text-[#F5F5F5]">Informações de Sinistro (quando aplicável):</strong> Indicação de atendimento particular ou através de seguradora parceira / associação veicular.
-                </li>
-                <li>
-                  <strong className="text-[#F5F5F5]">Métricas de Acesso Pseudonimizadas:</strong> Dados técnicos estritamente agregados de navegação (páginas visitadas, horário, resolução de tela) coletados somente mediante seu consentimento prévio em nossa Política de Cookies.
+                  <strong className="text-[#F5F5F5]">Métricas de Navegação e Conversão (Mediante Consentimento):</strong> Eventos técnicos de interação e cliques de conversão gerenciados pelo Google Tag Manager (GTM), acionados somente se você autorizar as categorias opcionais de Análise (Google Analytics 4) e/ou Marketing (Google Ads) no controle de cookies. Nenhum dado pessoal digitado no formulário ou no chat (como nome, telefone, placa ou texto da mensagem) é enviado para ferramentas de análise ou publicidade.
                 </li>
               </ul>
 
               <h3 className="text-base font-bold text-[#F5F5F5] pt-2">2. Finalidades e Bases Legais do Tratamento</h3>
-              <p>O tratamento dos seus dados ocorre fundamentado nas seguintes bases legais estabelecidas pela LGPD:</p>
+              <p>O tratamento dos dados ocorre com base nas seguintes hipóteses previstas na LGPD:</p>
               <ul className="list-disc pl-5 space-y-1.5 text-[#C9CDD2]">
                 <li>
-                  <strong className="text-[#F5F5F5]">Execução de Procedimentos Preliminares a Contrato (Art. 7º, V, LGPD):</strong> Elaboração, cálculo técnico e envio de orçamentos solicitados pelo próprio titular para conserto, pintura ou funilaria veicular.
+                  <strong className="text-[#F5F5F5]">Execução de Procedimentos Preliminares a Contrato (Art. 7º, V, LGPD):</strong> Elaboração, avaliação técnica preliminar e resposta a pedidos de orçamento solicitados pelo próprio titular para serviços de funilaria, pintura ou estética automotiva.
                 </li>
                 <li>
-                  <strong className="text-[#F5F5F5]">Legítimo Interesse (Art. 7º, IX, LGPD):</strong> Atendimento personalizado a dúvidas de clientes via WhatsApp e garantia da segurança e integridade operacional do website.
+                  <strong className="text-[#F5F5F5]">Legítimo Interesse (Art. 7º, IX, LGPD):</strong> Atendimento a dúvidas comerciais iniciadas voluntariamente pelo cliente e manutenção da segurança e estabilidade operacional do website.
                 </li>
                 <li>
-                  <strong className="text-[#F5F5F5]">Consentimento Expresso (Art. 7º, I, LGPD):</strong> Para a ativação de cookies analíticos e de mensuração de tráfego, podendo ser revogado a qualquer tempo.
+                  <strong className="text-[#F5F5F5]">Consentimento (Art. 7º, I, LGPD):</strong> Para o carregamento do Google Tag Manager e ativação de tags opcionais de Análise e/ou Marketing, podendo ser gerenciado ou revogado a qualquer momento no painel de cookies do site.
                 </li>
               </ul>
 
-              <h3 className="text-base font-bold text-[#F5F5F5] pt-2">3. Arquitetura Segura e Compartilhamento de Dados</h3>
+              <h3 className="text-base font-bold text-[#F5F5F5] pt-2">3. Serviços Externos, Infraestrutura e Compartilhamento</h3>
               <p>
-                Nosso formulário opera com máxima privacidade: as informações digitadas são formatadas em mensagem de texto estruturada e transmitidas diretamente para o aplicativo oficial do WhatsApp no seu dispositivo, valendo-se da criptografia de ponta a ponta nativa da plataforma.
+                O formulário e o chat flutuante do site não armazenam suas mensagens em banco de dados próprio no servidor web: o texto é preparado localmente no seu navegador para abertura direta no WhatsApp.
               </p>
               <p>
-                <strong className="text-[#F5F5F5]">A Garagem Mailasque não comercializa, não aluga e não cede seus dados pessoais</strong> para terceiros, empresas de marketing ou listas de telemarketing sob nenhuma hipótese. O compartilhamento ocorre apenas quando indispensável à execução do serviço (ex.: com seguradoras e fornecedores de peças originais, estritamente com sua anuência formal na Ordem de Serviço).
+                Para o funcionamento técnico do site e das funcionalidades acionadas pelo visitante, são utilizados os seguintes serviços e provedores:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-[#C9CDD2]">
+                <li>
+                  <strong className="text-[#F5F5F5]">Hospedagem Web (Netlify):</strong> Este site é hospedado na infraestrutura da Netlify, que processa automaticamente registros técnicos padrão de conexão (como endereço IP, data/hora e cabeçalhos do navegador) necessários para entregar as páginas com segurança.
+                </li>
+                <li>
+                  <strong className="text-[#F5F5F5]">Tipografia Externa (Google Fonts):</strong> As fontes visuais do site são carregadas a partir dos servidores do Google (<code className="text-[#F5F5F5]">fonts.googleapis.com</code> e <code className="text-[#F5F5F5]">fonts.gstatic.com</code>), o que envolve uma requisição técnica padrão do seu navegador para exibição correta dos textos.
+                </li>
+                <li>
+                  <strong className="text-[#F5F5F5]">Mapa Interativo Sob Demanda (Google Maps):</strong> Na seção de localização, o mapa interativo do Google Maps não é carregado automaticamente. A conexão com os servidores do Google Maps só ocorre se você clicar expressamente no botão <em>&ldquo;Carregar mapa interativo&rdquo;</em> ou optar por abrir os links externos de rota.
+                </li>
+                <li>
+                  <strong className="text-[#F5F5F5]">Mensuração e Publicidade (Google Tag Manager, GA4 e Google Ads):</strong> O container do Google Tag Manager só é carregado após o seu consentimento opcional, respeitando o padrão Google Consent Mode v2.
+                </li>
+                <li>
+                  <strong className="text-[#F5F5F5]">Comunicação Externa (WhatsApp):</strong> Acionado exclusivamente quando você clica em um botão de contato para conversar com a oficina.
+                </li>
+              </ul>
+              <p>
+                <strong className="text-[#F5F5F5]">A Garagem Mailasque não comercializa e não aluga seus dados pessoais.</strong> Provedores de infraestrutura e tecnologia listados acima operam sob suas respectivas políticas de privacidade e podem processar dados técnicos em servidores localizados no Brasil ou no exterior, conforme a arquitetura de cada serviço. No atendimento presencial da oficina, dados estritamente necessários poderão ser compartilhados com seguradoras ou fornecedores de peças mediante sua ciência na Ordem de Serviço.
               </p>
 
               <h3 className="text-base font-bold text-[#F5F5F5] pt-2">4. Prazo de Armazenamento e Retenção</h3>
               <p>
-                Os dados de contato fornecidos em orçamentos não contratados são descartados periodicamente. Dados vinculados a ordens de serviço executadas, garantias de pintura e notas fiscais são guardados pelo prazo legal exigido pelo Código de Defesa do Consumidor e legislação tributária brasileira.
+                No navegador do visitante, o site armazena apenas as chaves locais de preferência de privacidade (<code className="text-[#F5F5F5]">gm_cookie_preferences_v2</code> e <code className="text-[#F5F5F5]">gm_cookie_consent_v1</code>). Os dados informados em conversas de WhatsApp para orçamentos e eventuais ordens de serviço contratadas são mantidos pela oficina pelo tempo necessário ao atendimento comercial, cumprimento de garantias de serviço e obrigações fiscais e legais aplicáveis.
               </p>
 
               <h3 className="text-base font-bold text-[#F5F5F5] pt-2">5. Seus Direitos como Titular de Dados (Art. 18, LGPD)</h3>
-              <p>Você possui o direito garantido de solicitar à Garagem Mailasque, a qualquer momento e sem custos:</p>
+              <p>Nos termos da LGPD, você pode solicitar à Garagem Mailasque, a qualquer momento:</p>
               <ul className="list-disc pl-5 space-y-1 text-[#C9CDD2]">
-                <li>Confirmação da existência de tratamento e acesso aos seus dados;</li>
+                <li>Confirmação da existência de tratamento e acesso aos seus dados pessoais;</li>
                 <li>Correção de dados incompletos, inexatos ou desatualizados;</li>
-                <li>Anonimização, bloqueio ou eliminação de dados desnecessários ou tratados em desacordo com a LGPD;</li>
-                <li>Eliminação dos dados pessoais tratados com seu consentimento;</li>
-                <li>Revogação do consentimento concedido anteriormente.</li>
+                <li>Anonimização, bloqueio ou eliminação de dados desnecessários ou excessivos;</li>
+                <li>Eliminação dos dados pessoais tratados com base no seu consentimento, quando aplicável;</li>
+                <li>Informação sobre o compartilhamento de dados e revogação do consentimento a qualquer momento.</li>
               </ul>
               <p className="pt-1">
-                Para exercer seus direitos, basta entrar em contato com nossa administração pelo WhatsApp ({businessData.phone}) ou presencialmente em nossa oficina.
+                Para exercer seus direitos ou esclarecer dúvidas sobre privacidade, entre em contato pelo WhatsApp oficial ({businessData.phone}) ou presencialmente em nosso endereço em Mailasqui, São Roque/SP.
               </p>
             </div>
           )}
@@ -332,25 +349,25 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
           {activeTab === 'cookies' && (
             <div className="space-y-4">
               <p>
-                A <strong className="text-[#F5F5F5]">Política de Cookies da Garagem Mailasque</strong> explica de forma transparente como utilizamos cookies e tecnologias de armazenamento local para viabilizar o funcionamento seguro do nosso site e respeitar sua privacidade conforme a LGPD.
+                A <strong className="text-[#F5F5F5]">Política de Cookies da Garagem Mailasque</strong> explica de forma transparente como utilizamos cookies e tecnologias de armazenamento local (<code className="text-[#F5F5F5]">localStorage</code>) para viabilizar o funcionamento seguro do nosso site e respeitar suas escolhas de privacidade.
               </p>
 
-              <h3 className="text-base font-bold text-[#F5F5F5] pt-2">1. O que são Cookies?</h3>
+              <h3 className="text-base font-bold text-[#F5F5F5] pt-2">1. O que são Cookies e Armazenamento Local?</h3>
               <p>
-                Cookies são pequenos arquivos de texto armazenados no seu computador ou celular pelo navegador quando você visita uma página web. Eles servem para lembrar suas ações e preferências (como o consentimento de privacidade), viabilizar segurança e ajudar a entender como o site é utilizado de forma anônima.
+                Cookies e chaves de armazenamento local são pequenos registros salvos no seu navegador quando você visita uma página web. Eles servem para lembrar suas escolhas de privacidade e, somente se você autorizar, permitir a mensuração estatística de visitas e de conversões de anúncios.
               </p>
 
-              <h3 className="text-base font-bold text-[#F5F5F5] pt-2">2. Categorias de Cookies Utilizados neste Website</h3>
+              <h3 className="text-base font-bold text-[#F5F5F5] pt-2">2. Categorias Utilizadas neste Website</h3>
               <div className="space-y-3">
                 <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-[#2C2C2C]">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-sm text-[#F5F5F5]">A. Cookies Estritamente Necessários</span>
+                    <span className="font-bold text-sm text-[#F5F5F5]">A. Armazenamento Estritamente Necessário</span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#262626] text-[#22C55E] border border-[#22C55E]/30">
                       Sempre Ativos
                     </span>
                   </div>
                   <p className="text-xs text-[#A3A3A3]">
-                    Indispensáveis para a navegação, segurança, estabilidade da página e para gravar se você aceitou ou recusou métricas de privacidade. Não armazenam dados identificáveis e não podem ser desativados sem comprometer a navegação.
+                    Indispensável para gravar no seu navegador (<code className="text-[#F5F5F5]">gm_cookie_preferences_v2</code> e <code className="text-[#F5F5F5]">gm_cookie_consent_v1</code>) se você aceitou, recusou ou personalizou as categorias opcionais. Sem esse registro, o banner de consentimento reapareceria a cada interação. Não armazena dados pessoais identificáveis.
                   </p>
                 </div>
 
@@ -362,7 +379,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-[#A3A3A3]">
-                    Utilizados por ferramentas como o Google Analytics 4 para registrar métricas agregadas e anônimas (ex.: páginas mais acessadas, tempo de permanência, tipo de aparelho). Ajudam a otimizar a velocidade e a usabilidade do site sem identificar o titular pessoalmente.
+                    Gerenciados via Google Tag Manager (GTM) para habilitar o Google Analytics 4 (<code className="text-[#F5F5F5]">analytics_storage</code>) quando autorizados pelo visitante. Permitem medir estatísticas agregadas de navegação e eventos de interação na página sem enviar nome, telefone, placa ou conteúdo de mensagens.
                   </p>
                 </div>
 
@@ -374,14 +391,14 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-[#A3A3A3]">
-                    Aplicados somente quando veiculamos campanhas de divulgação local (Google Ads / Meta Ads) para verificar se anúncios resultaram em cliques para orçamento, sem gerar perfis invasivos de navegação.
+                    Gerenciados via Google Tag Manager (GTM) para mensuração de conversões de campanhas no Google Ads (<code className="text-[#F5F5F5]">ad_storage</code>, <code className="text-[#F5F5F5]">ad_user_data</code> e <code className="text-[#F5F5F5]">ad_personalization</code>) quando autorizados pelo visitante, permitindo verificar se um anúncio gerou cliques de contato para orçamento.
                   </p>
                 </div>
               </div>
 
               <h3 className="text-base font-bold text-[#F5F5F5] pt-2">3. Como Gerenciar ou Revogar seu Consentimento</h3>
               <p>
-                Você tem autonomia total para mudar suas preferências a qualquer momento:
+                Por padrão, todas as categorias opcionais iniciam desativadas. Você tem autonomia para alterar ou revogar sua escolha a qualquer momento:
               </p>
               <ul className="list-disc pl-5 space-y-1 text-[#C9CDD2]">
                 <li>
@@ -393,10 +410,10 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
                   >
                     Configurar Cookies
                   </button>{' '}
-                  neste modal ou no link correspondente no rodapé para ativar ou desativar categorias opcionais instantaneamente.
+                  neste modal ou no botão correspondente no rodapé do site para ativar, personalizar ou rejeitar as categorias opcionais imediatamente.
                 </li>
                 <li>
-                  <strong className="text-[#F5F5F5]">Configurações do Navegador:</strong> Todos os navegadores (Chrome, Safari, Firefox, Edge) permitem apagar cookies existentes ou bloquear cookies de terceiros no menu de Privacidade e Segurança.
+                  <strong className="text-[#F5F5F5]">Configurações do Navegador:</strong> Você também pode apagar os cookies e dados de sites salvos diretamente nas configurações de Privacidade e Segurança do seu navegador (Chrome, Safari, Firefox, Edge).
                 </li>
               </ul>
             </div>

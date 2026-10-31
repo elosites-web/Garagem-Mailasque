@@ -18,7 +18,6 @@ const DAMAGED_PARTS_OPTIONS = [
 
 interface FormState {
   name: string;
-  phone: string;
   service: string;
   vehicle: string;
   vehicleYear: string;
@@ -31,7 +30,6 @@ interface FormState {
 
 interface FormErrors {
   name?: string;
-  phone?: string;
   service?: string;
   vehicle?: string;
   isInsurance?: string;
@@ -45,7 +43,6 @@ interface QuoteFormProps {
 export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
   const [formData, setFormData] = useState<FormState>({
     name: '',
-    phone: '',
     service: 'Funilaria',
     vehicle: '',
     vehicleYear: '',
@@ -59,22 +56,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-
-  // Formatação de telefone com máscara brasileira (XX) XXXXX-XXXX
-  const formatPhone = (val: string) => {
-    const numbers = val.replace(/\D/g, '').slice(0, 11);
-    if (numbers.length <= 2) return numbers;
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value);
-    setFormData((prev) => ({ ...prev, phone: formatted }));
-    if (errors.phone) {
-      setErrors((prev) => ({ ...prev, phone: undefined }));
-    }
-  };
 
   const handlePartToggle = (part: string) => {
     setFormData((prev) => {
@@ -95,11 +76,6 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
 
     if (!formData.name.trim() || formData.name.trim().length < 2) {
       newErrors.name = 'Por favor, informe seu nome completo.';
-    }
-
-    const cleanPhone = formData.phone.replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length < 10) {
-      newErrors.phone = 'Informe um WhatsApp válido com DDD (ex.: 11 99999-9999).';
     }
 
     if (!formData.service) {
@@ -208,62 +184,33 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate className="space-y-6">
-              {/* Linha 1: Nome e WhatsApp */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Nome */}
-                <div>
-                  <label htmlFor="form-name" className="block text-xs font-bold text-[#C9CDD2] uppercase tracking-wider mb-2">
-                    Seu Nome *
-                  </label>
-                  <input
-                    id="form-name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => {
-                      setFormData({ ...formData, name: e.target.value });
-                      if (errors.name) setErrors({ ...errors, name: undefined });
-                    }}
-                    placeholder="Ex.: Carlos Mendes"
-                    aria-describedby={errors.name ? 'error-name' : undefined}
-                    aria-invalid={Boolean(errors.name)}
-                    className={`w-full px-4 py-3.5 rounded-xl bg-[#121212] border text-[#F5F5F5] text-sm focus:outline-none transition-colors ${
-                      errors.name ? 'border-[#EF4444] focus:border-[#EF4444]' : 'border-[#2C2C2C] focus:border-[#F97316]'
-                    }`}
-                  />
-                  {errors.name && (
-                    <p id="error-name" role="alert" className="mt-1.5 text-xs text-[#EF4444] flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>{errors.name}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* WhatsApp com DDD */}
-                <div>
-                  <label htmlFor="form-phone" className="block text-xs font-bold text-[#C9CDD2] uppercase tracking-wider mb-2">
-                    WhatsApp com DDD *
-                  </label>
-                  <input
-                    id="form-phone"
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={handlePhoneChange}
-                    placeholder="(11) 99999-9999"
-                    aria-describedby={errors.phone ? 'error-phone' : undefined}
-                    aria-invalid={Boolean(errors.phone)}
-                    className={`w-full px-4 py-3.5 rounded-xl bg-[#121212] border text-[#F5F5F5] text-sm focus:outline-none transition-colors ${
-                      errors.phone ? 'border-[#EF4444] focus:border-[#EF4444]' : 'border-[#2C2C2C] focus:border-[#F97316]'
-                    }`}
-                  />
-                  {errors.phone && (
-                    <p id="error-phone" role="alert" className="mt-1.5 text-xs text-[#EF4444] flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>{errors.phone}</span>
-                    </p>
-                  )}
-                </div>
+              {/* Linha 1: Nome */}
+              <div>
+                <label htmlFor="form-name" className="block text-xs font-bold text-[#C9CDD2] uppercase tracking-wider mb-2">
+                  Seu Nome *
+                </label>
+                <input
+                  id="form-name"
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (errors.name) setErrors({ ...errors, name: undefined });
+                  }}
+                  placeholder="Ex.: Carlos Mendes"
+                  aria-describedby={errors.name ? 'error-name' : undefined}
+                  aria-invalid={Boolean(errors.name)}
+                  className={`w-full px-4 py-3.5 rounded-xl bg-[#121212] border text-[#F5F5F5] text-sm focus:outline-none transition-colors ${
+                    errors.name ? 'border-[#EF4444] focus:border-[#EF4444]' : 'border-[#2C2C2C] focus:border-[#F97316]'
+                  }`}
+                />
+                {errors.name && (
+                  <p id="error-name" role="alert" className="mt-1.5 text-xs text-[#EF4444] flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>{errors.name}</span>
+                  </p>
+                )}
               </div>
 
               {/* Linha 2: Serviço e Veículo */}
@@ -456,7 +403,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({ onOpenPrivacyModal }) => {
                     className="w-4 h-4 mt-0.5 rounded text-[#F97316] bg-[#121212] border-[#2C2C2C] focus:ring-[#F97316]"
                   />
                   <span>
-                    Concordo em fornecer meus dados (nome, WhatsApp e dados do veículo) exclusivamente para que a Garagem Mailasque entre em contato para fornecer o orçamento solicitado, nos termos da{' '}
+                    Concordo em fornecer meus dados (nome e informações do veículo/serviço) exclusivamente para iniciar o atendimento de orçamento pelo WhatsApp com a Garagem Mailasque, nos termos da{' '}
                     <button
                       type="button"
                       onClick={onOpenPrivacyModal}
